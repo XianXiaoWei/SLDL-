@@ -255,6 +255,8 @@ const kTokenReserved = Object.freeze({
   Uint32: new Type("uint32_t"),
   Int64: new Type("int64_t"),
   Uint64: new Type("uint64_t"),
+  Float: new Type("float"),
+  Double: new Type("double"),
   Cstring: new Type("cstring"),
   TgcString: new Type("TgcString"),
 });
@@ -269,6 +271,8 @@ const kPrimitiveTypes = Object.freeze({
   Uint32: kTokenReserved.Uint32,
   Int64: kTokenReserved.Int64,
   Uint64: kTokenReserved.Uint64,
+  Float: kTokenReserved.Float,
+  Double: kTokenReserved.Double,
   Cstring: kTokenReserved.Cstring,
   TgcString: kTokenReserved.TgcString,
 })

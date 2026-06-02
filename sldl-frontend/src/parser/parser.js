@@ -24,6 +24,8 @@ function initialEnv(env) {
   env.put(createEnvEntryType(kPrimitiveTypes.Uint32));
   env.put(createEnvEntryType(kPrimitiveTypes.Int64));
   env.put(createEnvEntryType(kPrimitiveTypes.Uint64));
+  env.put(createEnvEntryType(kPrimitiveTypes.Float));
+  env.put(createEnvEntryType(kPrimitiveTypes.Double));
   env.put(createEnvEntryType(kPrimitiveTypes.Cstring));
   env.put(createEnvEntryType(kPrimitiveTypes.TgcString));
 }
@@ -94,7 +96,7 @@ class CompilerParser {
 
   match(cond) {
     if (!this.test(cond))
-      throw new Error("unexpected " + this.content);
+      throw kBulitInExceptions.Unexpected.from(this.look);
   }
 
   onerror(e) {
@@ -111,24 +113,6 @@ class CompilerParser {
   }
 }
 
-var a = new CompilerParser(`
-class A {
-  uint32_t a;
-}
-
-class B extends A {
-  uint32_t b;
-  uint32_t c;
-}
-  
-class Marker {
-  Quat quat;
-  Vector3 pos;
-  Vector3 scale;
-  bool enabled;
-}
-`
-);
-
-b = new ToplevelNode();
-b.parse(a, a.env);
+module.exports = {
+  CompilerParser
+};
