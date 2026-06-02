@@ -4,7 +4,7 @@ class CompileException extends Error {
    * @param {Token} token 
    */
   constructor(msg, token) {
-    this.message = msg;
+    super(msg);
     this.context = token;
   }
 
@@ -22,7 +22,7 @@ class SimpleCompileExceptionBuilder {
   }
 
   /**
-   * @param {Token}
+   * @param {Token} [token]
    * @returns {CompileException}
    */
   from(token) {
@@ -50,8 +50,17 @@ class DynamicCompileExceptionBuilder {
 }
 
 const kBulitInExceptions = Object.freeze({
-  Unexpected: new DynamicCompileExceptionBuilder((token) => `unexpected "${token.content.toString()}"`),
-  DuplicatedMember: new DynamicCompileExceptionBuilder((token) => `duplicated member "${token.content.toString()}"`),
+  Unexpected: new DynamicCompileExceptionBuilder((token) =>
+    `unexpected "${token.raw()}"`),
+  DuplicatedMember: new DynamicCompileExceptionBuilder((token) =>
+    `duplicated member "${token.raw()}"`),
+  InvalidType: new DynamicCompileExceptionBuilder((token) =>
+    `unrecognized type "${token.raw()}"`),
+  StructInvalidMemberType: new DynamicCompileExceptionBuilder((token) =>
+    `invalid type "${token.raw()}" in struct, struct members must be primitive`),
+  ClassInvalidParentType: new DynamicCompileExceptionBuilder((token) =>
+    `invalid parent "${token.raw()}" in class`),
+  TooManyError: new SimpleCompileExceptionBuilder("too many errors"),
 });
 
 module.exports = {
