@@ -12,7 +12,7 @@ class Env {
    * @param {EnvEntry} entry 
    */
   put(entry) {
-    this.symbols.set(entry.token.raw(), entry);
+    this.symbols.set(entry.name.toString(), entry);
   }
 
   /**
@@ -30,39 +30,54 @@ class Env {
   }
 }
 
+const kEnvEntryType = Object.freeze({
+  Variable: 0,
+  Constant: 1,
+  Primitive: 2,
+  Typedef: 3,
+  Struct: 5,
+  Class: 4,
+});
+
 /** Represents a register in symbol table. */
 class EnvEntry {
+  static createClass(token, node) {
+    return new EnvEntry(
+      kEnvEntryType.Class,
+      token.content,
+      node
+    );
+  }
+
   /**
-   * @param {Token} token - Name.
-   * @param {AstNode} node - Content.
+   * @param {number} type - Type.
+   * @param {Word} [id] - Name.
+   * @param {AstNode} [node] - Content.
    */
-  constructor(token, node) {
-    this.token = token;
+  constructor(type, id, node) {
+    this.type = type || kEnvEntryType.Variable;
+    this.name = id;
     this.node = node;
   }
 
   isType() {
-    return false;
-  }
-}
-
-/** Represents a type definition. */
-class Typedef extends EnvEntry {
-  /**
-   * @param {Token} typeName - Name of the type.
-   * @param {AstNode} typeDef - Definition of the type.
-   */
-  constructor(typeName, typeDef) {
-    super(typeName, typeDef);
+    return this.type == kEnvEntryType.Primitive
+      || this.type == kEnvEntryType.Typedef
+      || this.type == kEnvEntryType.Struct
+      || this.type == kEnvEntryType.Class;
   }
 
-  isType() {
-    return true;
+  isExtendable() {
+    return this.type == kEnvEntryType.Class;
+  }
+
+  isPrimitive() {
+    return this.type == kEnvEntryType.Primitive;
   }
 }
 
 module.exports = {
   Env,
   EnvEntry,
-  Typedef
+  kEnvEntryType
 };

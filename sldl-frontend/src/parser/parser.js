@@ -1,22 +1,13 @@
-const { FileSlice } = require("sldl-utils");
+const { FileSlice, kBulitInExceptions } = require("sldl-utils");
 const { CompilerLexer } = require("../lexer/lexer.js");
 const { TokenContent, kTokenType, kTokenReserved, Token, kPrimitiveTypes } = require("../lexer/token.js");
 const { AstNode } = require("./ast/astNode.js");
 const { ClassBlock, ClassMemberDecl, ClassStatement } = require("./ast/statement/classStatement.js");
-const { Env, EnvEntry, Typedef } = require("./env.js");
+const { Env, EnvEntry, kEnvEntryType } = require("./env.js");
+const { ToplevelNode } = require("./ast/toplevel.js");
 
 function createEnvEntryType(content) {
-  var token = new Token(
-    content,
-    0,
-    0,
-    FileSlice.Null,
-    0,
-    0,
-    false,
-    false
-  );
-  return new Typedef(token, new AstNode(token));
+  return new EnvEntry(kEnvEntryType.Primitive, content);
 }
 
 /**
@@ -44,10 +35,13 @@ class CompilerParser {
   constructor(input) {
     this.lexer = new CompilerLexer(input);
 
-    /** Stores all symbols (types, objects, identifiers). */
-    this.env = new Env();
+    this.errors = [];
+
     this.look = void 0;
     this.done = false;
+
+    /** Stores all symbols (types, objects, identifiers). */
+    this.env = new Env();
 
     initialEnv(this.env);
 
@@ -65,6 +59,16 @@ class CompilerParser {
     this.look = this.lexer.scan();
     if (!this.look)
       this.done = true;
+  }
+
+  /**
+   * Move until the given token. Used in panic mode.
+   * After the function, loop points to the given token or end of the file.
+   * @param {number|string|TokenContent} cond 
+   */
+  moveTil(cond) {
+    while (!this.done && !this.test(cond))
+      this.move();
   }
 
   /**
@@ -93,122 +97,10 @@ class CompilerParser {
       throw new Error("unexpected " + this.content);
   }
 
-  toplevel() {
-    while (!this.done) {
-      if (this.test(kTokenReserved.Class)) {
-        var clazz = this.stmtClass();
-        this.env.put(new Typedef(clazz.name, clazz));
-      }
-    }
-  }
-
-  /**
-   * Parse a class statement.
-   * 
-   * <ClassStatement>:
-   *   class <Identifier> <ClassBlock>
-   *   class <Identifier> extends <Identifier> <ClassBlock>
-   * 
-   * Entry: at "class"
-   * Exit: after <ClassBlock>
-   * 
-   * @returns {ClassStatement}
-   */
-  stmtClass() {
-    // Skip "class".
-    var start = this.look;
-
-    this.move();
-    this.match(kTokenType.Identifier);
-
-    // Record class name.
-    var className = this.look
-      , parentClassDef = void 0;
-
-    // Skip class name.
-    this.move();
-
-    // Process extends.
-    if (this.content == kTokenReserved.Extends) {
-      this.move();
-      this.match(kTokenType.Identifier);
-      var parentClassName = this.look;
-      this.move();
-
-      parentClassDef = this.env.get(parentClassName);
-      if (!parentClassDef || !parentClassDef.isType())
-        throw new Error("unrecognized type " + parentClassName.raw());
-    }
-
-    var result = new ClassStatement(start, className, parentClassDef);
-
-    this.blockClass(result);
-
-    return result;
-  }
-
-  /**
-   * Parse a class block.
-   * 
-   * <ClassBlock>:
-   *   { <ClassMembers> }
-   * 
-   * <ClassMembers>:
-   *   <ClassMember> <ClassMembers>
-   *   <ClassMember>
-   * 
-   * <ClassMember>:
-   *   <Identifier> <Identifier> ;
-   *   <Identifier> <Identifier> = <Literal> ;
-   * 
-   * Entry: look -> at "{"
-   * Exit: look -> after "}"
-   * 
-   * @param {ClassStatement} clazz 
-   * @returns {ClassStatement}
-   */
-  blockClass(clazz) {
-    // "{"
-    this.match(kTokenReserved.BraceL);
-    this.move();
-
-    while (this.test(kTokenType.Identifier)) {
-      var typeName = this.look
-        , memberName
-        , defaultValue;
-
-      // Member name.
-      this.move();
-      this.match(kTokenType.Identifier);
-      memberName = this.look;
-
-      // Skip member name.
-      this.move();
-
-      if (this.test(kTokenReserved.Assign)) {
-        // Default value.
-        this.move();
-        defaultValue = this.exprConstant();
-        this.move();
-      }
-
-      // ";"
-      this.match(kTokenReserved.Semicolon);
-      this.move();
-
-      // Add member to class.
-      var typedef = this.env.get(typeName);
-      if (!typedef || !typedef.isType())
-        throw new Error("unrecognized type " + typeName.content);
-
-      clazz.addMember(new ClassMemberDecl(typedef, memberName, defaultValue));
-    }
-
-    // "}"
-    this.match(kTokenReserved.BraceR);
-    this.move();
-
-    return clazz;
+  onerror(e) {
+    if (this.errors.length >= 1024)
+      throw kBulitInExceptions.TooManyError.from();
+    this.errors.push(e);
   }
 
   /**
@@ -219,5 +111,24 @@ class CompilerParser {
   }
 }
 
-var a = new CompilerParser("class A { uint32_t a; }class B extends A { uint32_t v; }");
-a.toplevel();
+var a = new CompilerParser(`
+class A {
+  uint32_t a;
+}
+
+class B extends A {
+  uint32_t b;
+  uint32_t c;
+}
+  
+class Marker {
+  Quat quat;
+  Vector3 pos;
+  Vector3 scale;
+  bool enabled;
+}
+`
+);
+
+b = new ToplevelNode();
+b.parse(a, a.env);
