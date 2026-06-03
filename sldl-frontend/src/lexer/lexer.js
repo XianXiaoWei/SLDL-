@@ -14,7 +14,7 @@ const {
  * Takes a preprocessed FileSlice and produces a stream of Token objects.
  *
  * Unlike `PreprocessLexer`, this lexer does NOT handle preprocessor
- * directives — those have already been resolved by the preprocessor.
+ * directives - those have already been resolved by the preprocessor.
  */
 class CompilerLexer {
   /**
@@ -37,27 +37,27 @@ class CompilerLexer {
     this.afterWhitespace = 0;
     this.look = void 0;
 
-    /** Map of reserved words. */
-    this.reserved = new Map();
-    this._initReserved();
+    /** Map of all words. */
+    this.words = new Map();
+    this.initReserved();
   }
 
   /**
    * Initialise the reserved-word table.
    */
-  _initReserved() {
+  initReserved() {
     for (var k in kTokenReserved) {
       var r = kTokenReserved[k];
       if (r instanceof Word)
-        this._reserve(r);
+        this.reserve(r);
     }
   }
 
   /**
    * @param {Word} w
    */
-  _reserve(w) {
-    this.reserved.set(w.lexeme, w)
+  reserve(w) {
+    this.words.set(w.lexeme, w)
   }
 
   /**
@@ -84,35 +84,35 @@ class CompilerLexer {
     // first token in the line.
     this.isFirstInLine = 0;
     this.look = r;
-    return r
+    return r;
   }
 
   /**
    * @returns {boolean}
    */
   done() {
-    return this.cursor >= this.string.length && !this.currentFile.next
+    return this.cursor >= this.string.length && !this.currentFile.next;
   }
 
   /**
    * @returns {boolean}
    */
   isUnquotedStringStart() {
-    return /[\p{ID_Start}_]/u.test(this.peek)
+    return /[\p{ID_Start}_]/u.test(this.peek);
   }
 
   /**
    * @returns {boolean}
    */
   isUnquotedString() {
-    return /[\p{ID_Continue}]/u.test(this.peek)
+    return /[\p{ID_Continue}]/u.test(this.peek);
   }
 
   /**
    * @returns {boolean}
    */
   isWhitespace() {
-    return /[	﻿\p{Space_Separator}]/u.test(this.peek)
+    return /[\t\v\f\uFEFF\p{Space_Separator}]/u.test(this.peek);
   }
 
   /**
@@ -186,6 +186,105 @@ class CompilerLexer {
   }
 
   /**
+   * Scan a token content without context.
+   * @returns {TokenContent|undefined}
+   */
+  scanRaw() {
+    if (this.done())
+      return void 0;
+
+    // Read tokens.
+    switch (this.peek) {
+      case '&':
+        if (this.readch('&'))
+          return kTokenReserved.LogicAnd;
+        return kTokenReserved.And;
+      case '|':
+        if (this.readch('|'))
+          return kTokenReserved.LogicOr;
+        return kTokenReserved.Or;
+      case '=':
+        if (this.readch('='))
+          return kTokenReserved.Eq;
+        return kTokenReserved.Assign;
+      case '!':
+        if (this.readch('='))
+          return kTokenReserved.Neq;
+        return kTokenReserved.Excl;
+      case '<':
+        if (this.readch('='))
+          return kTokenReserved.Leq;
+        return kTokenReserved.Lt;
+      case '>':
+        if (this.readch('='))
+          return kTokenReserved.Geq;
+        return kTokenReserved.Gt;
+      case '-':
+        if (this.readch('-'))
+          return kTokenReserved.Dec;
+        else if (this.isch('='))
+          return kTokenReserved.SubTo;
+        return kTokenReserved.Sub;
+      case '+':
+        if (this.readch('+'))
+          return kTokenReserved.Inc;
+        else if (this.isch('='))
+          return kTokenReserved.AddTo;
+        return kTokenReserved.Add;
+      case '*':
+        if (this.readch('='))
+          return kTokenReserved.MulTo;
+        return kTokenReserved.Mul;
+      case '/':
+        if (this.readch('='))
+          return kTokenReserved.DivTo;
+        return kTokenReserved.Div;
+      case '%':
+        if (this.readch('='))
+          return kTokenReserved.ModTo;
+        return kTokenReserved.Mod;
+    }
+
+    // Read identifier or keyword.
+    if (this.isUnquotedStringStart()) {
+      var b = this.readStringUnquoted()
+        , w = this.words.get(b);
+
+      if (w != void 0)
+        return w;
+
+      w = new Word(b);
+      this.words.set(w.lexeme, w);
+
+      return w;
+    }
+
+    // Read number.
+    if (/\d/.test(this.peek)) {
+      var numStr = this.readNumber();
+      // TODO: Optimize number values.
+      if (numStr.indexOf(".") >= 0)
+        return new NumericLiteral(numStr, parseFloat(numStr));
+      return new NumericLiteral(numStr, parseInt(numStr, 10));
+    }
+
+    // Read string literal.
+    if (this.peek === '"') {
+      var strval = this.readStringUntil('"');
+      return new StringLiteral("\"" + strval + "\"", strval);
+    }
+
+    if (this.done())
+      return void 0;
+
+    // Unknown token - emit as a plain token.
+    var t = new TokenContent(kTokenType.Token, this.peek);
+    this.peek = " ";
+
+    return t;
+  }
+
+  /**
    * Scan the next token.
    * @returns {Token|null}
    */
@@ -198,98 +297,11 @@ class CompilerLexer {
     this.begin = this.cursor;
     this.column = this.columnEnd;
 
-    // Read tokens.
-    switch (this.peek) {
-      case '&':
-        if (this.readch('&'))
-          return this.buildToken(kTokenReserved.LogicAnd);
-        return this.buildToken(kTokenReserved.And);
-      case '|':
-        if (this.readch('|'))
-          return this.buildToken(kTokenReserved.LogicOr);
-        return this.buildToken(kTokenReserved.Or);
-      case '=':
-        if (this.readch('='))
-          return this.buildToken(kTokenReserved.Eq);
-        return this.buildToken(kTokenReserved.Assign);
-      case '!':
-        if (this.readch('='))
-          return this.buildToken(kTokenReserved.Neq);
-        return this.buildToken(kTokenReserved.Excl);
-      case '<':
-        if (this.readch('='))
-          return this.buildToken(kTokenReserved.Leq);
-        return this.buildToken(kTokenReserved.Lt);
-      case '>':
-        if (this.readch('='))
-          return this.buildToken(kTokenReserved.Geq);
-        return this.buildToken(kTokenReserved.Gt);
-      case '-':
-        if (this.readch('-'))
-          return this.buildToken(kTokenReserved.Dec);
-        else if (this.isch('='))
-          return this.buildToken(kTokenReserved.SubTo);
-        return this.buildToken(kTokenReserved.Sub);
-      case '+':
-        if (this.readch('+'))
-          return this.buildToken(kTokenReserved.Inc);
-        else if (this.isch('='))
-          return this.buildToken(kTokenReserved.AddTo);
-        return this.buildToken(kTokenReserved.Add);
-      case '*':
-        if (this.readch('='))
-          return this.buildToken(kTokenReserved.MulTo);
-        return this.buildToken(kTokenReserved.Mul);
-      case '/':
-        if (this.readch('='))
-          return this.buildToken(kTokenReserved.DivTo);
-        return this.buildToken(kTokenReserved.Div);
-      case '%':
-        if (this.readch('='))
-          return this.buildToken(kTokenReserved.ModTo);
-        return this.buildToken(kTokenReserved.Mod);
-    }
-
-    // Read identifier or keyword.
-    if (this.isUnquotedStringStart()) {
-      var b = this.readStringUnquoted()
-        , w = this.reserved.get(b);
-      if (w != void 0)
-        return this.buildToken(w, kTokenType.Identifier);
-      return this.buildToken(new Word(b), kTokenType.Identifier);
-    }
-
-    // Read number.
-    if (/\d/.test(this.peek)) {
-      var numStr = this.readNumber();
-      if (numStr.indexOf(".") >= 0)
-        return this.buildToken(new NumericLiteral(numStr, parseFloat(numStr)));
-      return this.buildToken(new NumericLiteral(numStr, parseInt(numStr, 10)));
-    }
-
-    // `#` as a plain token (should not appear in preprocessed source except
-    // perhaps in stringification contexts; handle gracefully).
-    if (this.peek == "#") {
-      this.readch();
-      return this.buildToken("#", kTokenType.Token);
-    }
-
-    // Read string literal.
-    if (this.peek == '"') {
-      var strVal = this.readStringUntil('"');
-      return this.buildToken(
-        new StringLiteral("\"" + strVal + "\"", strVal),
-        kTokenType.String
-      );
-    }
-
-    if (this.done())
+    var tokenContent = this.scanRaw();
+    if (!tokenContent)
       return null;
 
-    // Unknown token - emit as a plain token.
-    var t = this.buildToken(this.peek, kTokenType.Token);
-    this.peek = " ";
-    return t
+    return this.buildToken(tokenContent);
   }
 
   /**
@@ -303,6 +315,10 @@ class CompilerLexer {
       value: v,
       done: d
     }
+  }
+
+  readMarks() {
+    ;
   }
 
   /**

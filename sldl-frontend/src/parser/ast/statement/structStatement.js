@@ -162,8 +162,12 @@ class StructStatement extends Statement {
   constructor(token) {
     super(token);
 
+    // Ast subnodes.
     this.name = void 0;
     this.members = new Map();
+
+    // Env params.
+    this.entry = void 0;
   }
 
   /**
@@ -211,7 +215,8 @@ class StructStatement extends Statement {
     P.move();
 
     new StructBlock(P.look).parse(P, E, this);
-    E.put(EnvEntry.createStruct(this.name, this));
+    var entry = EnvEntry.createStruct(this.name, this);
+    E.put(entry);
   }
 
   /**

@@ -1,33 +1,43 @@
+/**
+ * Parser.
+ *
+ * Copyright (c) 2026 That Sky Project
+ * LGPL-3.0-or-later
+ */
+
 const { FileSlice, kBulitInExceptions } = require("sldl-utils");
 const { CompilerLexer } = require("../lexer/lexer.js");
-const { TokenContent, kTokenType, kTokenReserved, Token, kPrimitiveTypes } = require("../lexer/token.js");
-const { AstNode } = require("./ast/astNode.js");
-const { ClassBlock, ClassMemberDecl, ClassStatement } = require("./ast/statement/classStatement.js");
+const { TokenContent, kTokenType, kTokenReserved, Token, kInternalTypes } = require("../lexer/token.js");
 const { Env, EnvEntry, kEnvEntryType } = require("./env.js");
-const { ToplevelNode } = require("./ast/toplevel.js");
-
-function createEnvEntryType(content) {
-  return new EnvEntry(kEnvEntryType.Primitive, content);
-}
 
 /**
- * Initialize the symbol table.
+ * Initialize the symbol table. Internal types has no AstNode.
  * @param {Env} env 
  */
 function initialEnv(env) {
-  env.put(createEnvEntryType(kPrimitiveTypes.Bool));
-  env.put(createEnvEntryType(kPrimitiveTypes.Int8));
-  env.put(createEnvEntryType(kPrimitiveTypes.Uint8));
-  env.put(createEnvEntryType(kPrimitiveTypes.Int16));
-  env.put(createEnvEntryType(kPrimitiveTypes.Uint16));
-  env.put(createEnvEntryType(kPrimitiveTypes.Int32));
-  env.put(createEnvEntryType(kPrimitiveTypes.Uint32));
-  env.put(createEnvEntryType(kPrimitiveTypes.Int64));
-  env.put(createEnvEntryType(kPrimitiveTypes.Uint64));
-  env.put(createEnvEntryType(kPrimitiveTypes.Float));
-  env.put(createEnvEntryType(kPrimitiveTypes.Double));
-  env.put(createEnvEntryType(kPrimitiveTypes.Cstring));
-  env.put(createEnvEntryType(kPrimitiveTypes.TgcString));
+  function prim(content) {
+    return new EnvEntry(kEnvEntryType.Primitive, content);
+  }
+
+  // Integer types.
+  env.put(prim(kInternalTypes.Bool));
+  env.put(prim(kInternalTypes.Int8));
+  env.put(prim(kInternalTypes.Uint8));
+  env.put(prim(kInternalTypes.Int16));
+  env.put(prim(kInternalTypes.Uint16));
+  env.put(prim(kInternalTypes.Int32));
+  env.put(prim(kInternalTypes.Uint32));
+  env.put(prim(kInternalTypes.Int64));
+  env.put(prim(kInternalTypes.Uint64));
+  // Float types.
+  env.put(prim(kInternalTypes.Float));
+  env.put(prim(kInternalTypes.Double));
+  // String types.
+  env.put(prim(kInternalTypes.Cstring));
+  env.put(prim(kInternalTypes.TgcString));
+  // Object types.
+  env.put(new EnvEntry(kEnvEntryType.Class, kInternalTypes.Object));
+  env.put(new EnvEntry(kEnvEntryType.Class, kInternalTypes.Clump));
 }
 
 class CompilerParser {

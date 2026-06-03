@@ -6,13 +6,13 @@
  */
 
 const { kBulitInExceptions } = require("sldl-utils");
-const { kTokenReserved, kTokenType, kPrimitiveTypes } = require("../../../lexer/token.js");
+const { kTokenReserved, kTokenType, kInternalTypes } = require("../../../lexer/token.js");
 const { Expression } = require("./expression.js");
 
 /** Represents a compile-time constant literal (number, string, boolean). */
 class Constant extends Expression {
   /**
-   * @param {Token} token — The literal token.
+   * @param {Token} token - The literal token.
    */
   constructor(token) {
     super(token);
@@ -70,27 +70,27 @@ class Constant extends Expression {
 
     // Numeric literal.
     if (P.test(kTokenType.Number)) {
-      this.type = kPrimitiveTypes.Int32;
+      this.type = kInternalTypes.Int32;
       P.move();
       return;
     }
 
     // String literal.
     if (P.test(kTokenType.String)) {
-      this.type = kPrimitiveTypes.Cstring;
+      this.type = kInternalTypes.Cstring;
       P.move();
       return;
     }
 
     // Boolean literal.
     if (P.test(kTokenReserved.True)) {
-      this.type = kPrimitiveTypes.Bool;
+      this.type = kInternalTypes.Bool;
       P.move();
       return;
     }
 
     if (P.test(kTokenReserved.False)) {
-      this.type = kPrimitiveTypes.Bool;
+      this.type = kInternalTypes.Bool;
       P.move();
       return;
     }

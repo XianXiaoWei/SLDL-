@@ -1,5 +1,5 @@
 const { kBulitInExceptions } = require("sldl-utils");
-const { kTokenReserved, kTokenType } = require("../../../lexer/token.js");
+const { kTokenReserved, kTokenType, kInternalTypes } = require("../../../lexer/token.js");
 const { EnvEntry } = require("../../env.js");
 const { AstNode } = require("../astNode.js");
 const { Statement } = require("./statement.js");
@@ -160,9 +160,13 @@ class ClassStatement extends Statement {
   constructor(token) {
     super(token);
 
+    // Ast subnodes.
     this.name = void 0;
-    this.parent = void 0;
     this.members = new Map();
+
+    // Env params.
+    this.parent = void 0;
+    this.entry = void 0;
   }
 
   /**
@@ -206,33 +210,44 @@ class ClassStatement extends Statement {
 
     // Record class name.
     this.name = P.look;
+    if (E.get(this.name))
+      throw kBulitInExceptions.MultipleDefinition.from(this.name);
 
     // Skip class name.
     P.move();
 
     // Process extends.
+    var parentName = kInternalTypes.Object;
     if (P.content == kTokenReserved.Extends) {
       P.move();
       P.match(kTokenType.Identifier);
-      var parentClassName = P.look;
+      parentName = P.look;
       P.move();
+    }
 
-      var parent = E.get(parentClassName);
-      if (!parent || !parent.isType())
-        throw kBulitInExceptions.InvalidType.from(parentClassName);
+    // Process parent.
+    var parent = E.get(parentName);
+    if (!parent || !parent.isType())
+      throw kBulitInExceptions.InvalidType.from(parentName);
 
-      if (!parent.isExtendable())
-        throw kBulitInExceptions.ClassInvalidParentType.from(parentClassName);
+    if (!parent.isExtendable())
+      throw kBulitInExceptions.ClassInvalidParentType.from(parentName);
 
-      // Merge the member variables of the parent.
+    // Merge the member variables from the parent.
+    if (parent.node && parent.node.members)
       for (var kv of parent.node.members)
         this.members.set(kv[0], kv[1]);
 
-      this.parent = parent;
-    }
+    // Set the parent class.
+    this.parent = parent;
 
+    // Parse members.
     new ClassBlock(P.look).parse(P, E, this);
-    E.put(EnvEntry.createClass(this.name, this));
+
+    // Register into the symbol table.
+    var entry = EnvEntry.createClass(this.name, this);
+    this.entry = entry;
+    E.inherit(entry, parent.ident);
   }
 
   /**

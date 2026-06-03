@@ -236,35 +236,39 @@ const kTokenReserved = Object.freeze({
   Colon: new TokenContent(kTokenType.Token, ":"),
   Semicolon: new TokenContent(kTokenType.Token, ";"),
 
+  // Literals.
   True: new Word("true", true),
-  False: new BooleanLiteral("false", false),
-  Infinity: new FloatConstLiteral("Infinity", Infinity),
-  NaN: new FloatConstLiteral("NaN", NaN),
+  False: new Word("false", false),
+  Infinity: new Word("Infinity", Infinity),
+  NaN: new Word("NaN", NaN),
 
+  // Keywords.
   If: new Word("if"),
   Else: new Word("else"),
   Class: new Word("class"),
   Struct: new Word("struct"),
   Extends: new Word("extends"),
   Enum: new Word("enum"),
-  Prim: new Word("prim"),
 
-  Bool: new Type("bool"),
-  Int8: new Type("int8_t"),
-  Uint8: new Type("uint8_t"),
-  Int16: new Type("int16_t"),
-  Uint16: new Type("uint16_t"),
-  Int32: new Type("int32_t"),
-  Uint32: new Type("uint32_t"),
-  Int64: new Type("int64_t"),
-  Uint64: new Type("uint64_t"),
-  Float: new Type("float"),
-  Double: new Type("double"),
-  Cstring: new Type("cstring"),
-  TgcString: new Type("TgcString"),
+  // Types.
+  Bool: new Word("bool"),
+  Int8: new Word("int8_t"),
+  Uint8: new Word("uint8_t"),
+  Int16: new Word("int16_t"),
+  Uint16: new Word("uint16_t"),
+  Int32: new Word("int32_t"),
+  Uint32: new Word("uint32_t"),
+  Int64: new Word("int64_t"),
+  Uint64: new Word("uint64_t"),
+  Float: new Word("float"),
+  Double: new Word("double"),
+  Cstring: new Word("cstring"),
+  TgcString: new Word("TgcString"),
+  Object: new Word("Object"),
+  Clump: new Word("Clump")
 });
 
-const kPrimitiveTypes = Object.freeze({
+const kInternalTypes = Object.freeze({
   Bool: kTokenReserved.Bool,
   Int8: kTokenReserved.Int8,
   Uint8: kTokenReserved.Uint8,
@@ -278,7 +282,9 @@ const kPrimitiveTypes = Object.freeze({
   Double: kTokenReserved.Double,
   Cstring: kTokenReserved.Cstring,
   TgcString: kTokenReserved.TgcString,
-})
+  Object: kTokenReserved.Object,
+  Clump: kTokenReserved.Clump
+});
 
 module.exports = {
   TokenContent,
@@ -291,5 +297,5 @@ module.exports = {
   Token,
   kTokenType,
   kTokenReserved,
-  kPrimitiveTypes
+  kInternalTypes
 };
