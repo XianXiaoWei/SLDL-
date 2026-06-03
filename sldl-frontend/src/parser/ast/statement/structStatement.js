@@ -3,6 +3,7 @@ const { kTokenReserved, kTokenType } = require("../../../lexer/token.js");
 const { EnvEntry } = require("../../env.js");
 const { AstNode } = require("../astNode.js");
 const { Statement } = require("./statement.js");
+const { Constant } = require("../expression/constant.js");
 
 /** Represents a member variable of a class. */
 class StructMemberDecl extends AstNode {
@@ -65,7 +66,7 @@ class StructMemberDecl extends AstNode {
     if (P.test(kTokenReserved.Assign)) {
       // Default value.
       P.move();
-      this.defaultVal = P.exprConstant();
+      this.defaultVal = Constant.parse(P, E)(P.look);
       P.move();
     }
 

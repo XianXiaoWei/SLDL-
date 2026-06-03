@@ -95,7 +95,7 @@ class Constant extends Expression {
       return;
     }
 
-    this.error(kBulitInExceptions.Unexpected.from(P.look));
+    this.error(kBulitInExceptions.Unexpected, P.look);
   }
 
   /** @returns {*} */

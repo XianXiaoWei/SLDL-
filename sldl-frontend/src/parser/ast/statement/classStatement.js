@@ -3,6 +3,7 @@ const { kTokenReserved, kTokenType, kInternalTypes } = require("../../../lexer/t
 const { EnvEntry } = require("../../env.js");
 const { AstNode } = require("../astNode.js");
 const { Statement } = require("./statement.js");
+const { Constant } = require("../expression/constant.js");
 
 /** Represents a member variable of a class. */
 class ClassMemberDecl extends AstNode {
@@ -65,8 +66,7 @@ class ClassMemberDecl extends AstNode {
     if (P.test(kTokenReserved.Assign)) {
       // Default value.
       P.move();
-      this.defaultVal = P.exprConstant();
-      P.move();
+      this.defaultVal = Constant.parse(P, E)(P.look);
     }
 
     // ";"
@@ -141,7 +141,7 @@ class ClassBlock extends AstNode {
     while (P.test(kTokenType.Identifier)) {
       var decl = ClassMemberDecl.parse(P, E, clazz)();
       if (decl)
-        // Add member to class.
+        // Skip incomplete member.
         clazz.addMember(decl);
     }
 
