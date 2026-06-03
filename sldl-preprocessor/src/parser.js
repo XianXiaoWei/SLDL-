@@ -449,7 +449,7 @@ class PreprocessParser {
     this.done = false;
     /** @type {{skipping: boolean, hadTrueBranch: boolean}[]} */
     this.conditionalStack = [];
-    /** @type {Set<string>} — macros currently being expanded, to prevent recursion. */
+    /** @type {Set<string>} - macros currently being expanded, to prevent recursion. */
     this.expandingMacros = new Set();
 
     this.move();
@@ -928,7 +928,7 @@ class PreprocessParser {
     while (this.look) {
       // Track whether we handled a directive on this iteration.
       // When a directive handler consumes tokens, it advances `this.look`
-      // internally — we must skip the `this.move()` at the bottom.
+      // internally - we must skip the `this.move()` at the bottom.
       var handledDirective = false;
 
       // Handle preprocessor directives at line start.

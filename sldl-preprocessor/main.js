@@ -23,15 +23,15 @@ const {
  * Preprocess a source file, expanding all directives and macros.
  *
  * Supported directives:
- *   #include  — file inclusion
- *   #define   — object-like and function-like macros
- *   #undef    — remove a macro definition
- *   #if       — conditional compilation (expression evaluation)
- *   #ifdef    — conditional on macro defined
- *   #ifndef   — conditional on macro not defined
- *   #else     — alternate branch for #if/#ifdef/#ifndef
- *   #elif     — chained conditional
- *   #endif    — close conditional block
+ *   #include  - file inclusion
+ *   #define   - object-like and function-like macros
+ *   #undef    - remove a macro definition
+ *   #if       - conditional compilation (expression evaluation)
+ *   #ifdef    - conditional on macro defined
+ *   #ifndef   - conditional on macro not defined
+ *   #else     - alternate branch for #if/#ifdef/#ifndef
+ *   #elif     - chained conditional
+ *   #endif    - close conditional block
  *
  * @param {FileSlice} fileSlice - Input file slice to preprocess.
  * @param {Object} [options] - Preprocessor options.
