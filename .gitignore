@@ -3,6 +3,7 @@ dist/
 .vscode/
 .vs/
 .VSCodeCounter/
+.claude/
 
 package-lock.json
 
