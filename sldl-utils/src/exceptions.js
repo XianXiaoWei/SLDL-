@@ -56,12 +56,16 @@ const kBulitInExceptions = Object.freeze({
     `duplicated member "${token.raw()}"`),
   InvalidType: new DynamicCompileExceptionBuilder((token) =>
     `unrecognized type "${token.raw()}"`),
+  InvalidRef: new DynamicCompileExceptionBuilder((token) =>
+    `"${token.raw()}" is not defined as a variable or constant`),
   StructInvalidMemberType: new DynamicCompileExceptionBuilder((token) =>
     `invalid type "${token.raw()}" in struct, struct members must be primitive`),
   ClassInvalidParentType: new DynamicCompileExceptionBuilder((token) =>
     `invalid parent "${token.raw()}" in class`),
   MultipleDefinition: new DynamicCompileExceptionBuilder((token) =>
     `multiple definition "${token.raw()}"`),
+  Undeclared: new DynamicCompileExceptionBuilder((token) =>
+    `undeclared symbol "${token.raw()}"`),
   TooManyError: new SimpleCompileExceptionBuilder("too many errors"),
 });
 
