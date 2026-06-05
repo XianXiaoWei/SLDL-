@@ -26,7 +26,7 @@ class SimpleCompileExceptionBuilder {
    * @returns {CompileException}
    */
   from(token) {
-    return new SimpleCompileException(this.message, token);
+    return new CompileException(this.message, token);
   }
 }
 
@@ -67,6 +67,7 @@ const kBulitInExceptions = Object.freeze({
   Undeclared: new DynamicCompileExceptionBuilder((token) =>
     `undeclared symbol "${token.raw()}"`),
   TooManyError: new SimpleCompileExceptionBuilder("too many errors"),
+  UnexpectedEOF: new SimpleCompileExceptionBuilder("unexpected EOF"),
 });
 
 module.exports = {
