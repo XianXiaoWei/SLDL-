@@ -1,9 +1,13 @@
-const { MetaType } = require("./metaType.js");
+const { MetaType, kMetaValueType } = require("./metaType.js");
 const { LevelValueString } = require("../value/levelValueString.js");
 
 class MetaTypeString extends MetaType {
   constructor(name) {
     super(name);
+  }
+
+  valueType() {
+    return kMetaValueType.String;
   }
 
   /**

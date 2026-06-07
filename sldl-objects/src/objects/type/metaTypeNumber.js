@@ -1,5 +1,5 @@
 const { Buffer } = require("sldl-utils");
-const { MetaType } = require("./metaType.js");
+const { MetaType, kMetaValueType } = require("./metaType.js");
 const { LevelValueBool, LevelValueNumber } = require("../value/levelValueNumber.js");
 
 class MetaTypeBool extends MetaType {
@@ -9,6 +9,14 @@ class MetaTypeBool extends MetaType {
 
   getSize() {
     return 1;
+  }
+
+  getAlign() {
+    return 1;
+  }
+
+  valueType() {
+    return kMetaValueType.Number;
   }
 
   /**
@@ -54,8 +62,12 @@ class MetaTypeNumber extends MetaType {
     return this.size;
   }
 
-  isNumber() {
-    return true;
+  getAlign() {
+    return this.size;
+  }
+
+  valueType() {
+    return kMetaValueType.Number;
   }
 
   /**

@@ -1,32 +1,72 @@
 class LevelValue {
   constructor(def) {
-    /** @type {LevelType} */
+    /** @type {MetaType} */
     this.def = def;
     this.value = void 0;
   }
 
+  /**
+   * Get the size of the value.
+   * @returns {MetaType}
+   */
+  getDef() {
+    return this.def;
+  }
+
+  /**
+   * Get the size of the value.
+   * @returns {MetaType}
+   */
   getSize() {
     return this.def.getSize();
   }
 
+  /**
+   * Get the size of the value.
+   * @returns {number}
+   */
+  getSize() {
+    return this.def.getSize();
+  }
+
+  /**
+   * Get the alignment of the value.
+   * @returns {number}
+   */
+  getAlign() {
+    return this.def.getAlign();
+  }
+
+  /**
+   * Get the value.
+   * @returns {number}
+   */
   getValue() {
     return this.value;
   }
 
+  /**
+   * Set the value of the instance.
+   * @param {any} value 
+   */
   setValue(value) {
     this.value = value;
   }
 
-  isNumber() {
-    return this.def.isNumber();
+  /**
+   * Get the value type.
+   * @returns {number}
+   */
+  getSize() {
+    return this.def.getSize();
   }
 
-  isString() {
-    return this.def.isString();
-  }
-
-  isClass() {
-    return this.def.isClass();
+  /**
+   * Get the value type.
+   * @returns {number}
+   */
+  valueType() {
+    return this.def.valueType();
   }
 }
 

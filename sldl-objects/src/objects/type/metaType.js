@@ -1,3 +1,11 @@
+const kMetaValueType = Object.freeze({
+  None: 0,
+  Number: 1,
+  String: 2,
+  Struct: 3,
+  Class: 4
+});
+
 class MetaType {
   constructor(name) {
     return this.name = name;
@@ -7,16 +15,12 @@ class MetaType {
     return 0;
   }
 
-  isNumber() {
-    return false;
+  getAlign() {
+    return 1;
   }
 
-  isString() {
-    return false;
-  }
-
-  isClass() {
-    return false;
+  valueType() {
+    return kMetaValueType.None;
   }
 
   /**
@@ -42,5 +46,6 @@ class MetaType {
 }
 
 module.exports = {
-  MetaType
+  MetaType,
+  kMetaValueType
 };
