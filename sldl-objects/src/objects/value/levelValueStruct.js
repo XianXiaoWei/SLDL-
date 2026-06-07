@@ -9,6 +9,14 @@ class LevelValueStruct extends LevelValue {
 
   /**
    * @param {string} name 
+   * @returns {LevelValue|LevelValue[]|undefined}
+   */
+  getValue(name) {
+    return this.value.get(name);
+  }
+
+  /**
+   * @param {string} name 
    * @param {LevelValue|LevelValue[]} value 
    */
   setValue(name, value) {

@@ -2,6 +2,11 @@ const { LevelValueStruct } = require("../value/levelValueStruct.js");
 const { MetaType, kMetaValueType } = require("./metaType.js");
 
 class MetaTypeStructMember extends MetaType {
+  /**
+   * @param {MetaType} def 
+   * @param {string} name 
+   * @param {number} [count] 
+   */
   constructor(def, name, count) {
     super(name);
 
@@ -11,14 +16,23 @@ class MetaTypeStructMember extends MetaType {
     this.count = count || 1;
   }
 
+  /**
+   * @returns {number}
+   */
   getSize() {
     return this.def.getSize() * this.count;
   }
 
+  /**
+   * @returns {number}
+   */
   getAlign() {
     return this.def.getAlign();
   }
 
+  /**
+   * @returns {number}
+   */
   valueType() {
     return this.def.valueType();
   }
@@ -72,6 +86,10 @@ class MetaTypeStruct extends MetaType {
     return this.size;
   }
 
+  getAlign() {
+    return this.align;
+  }
+
   valueType() {
     return kMetaValueType.Struct;
   }
@@ -79,11 +97,13 @@ class MetaTypeStruct extends MetaType {
   /**
    * @param {MetaType} def 
    * @param {string} name 
-   * @param {number} count
+   * @param {number} [count]
    * @returns {boolean}
    */
   addMember(def, name, count) {
     if (def.valueType() != kMetaValueType.Number && def.valueType() != kMetaValueType.Struct)
+      return false;
+    if (this.members.has(name))
       return false;
 
     var member = new MetaTypeStructMember(def, this.name + "::" + name, count)
@@ -102,6 +122,8 @@ class MetaTypeStruct extends MetaType {
       : this.cursor;
     // Add member to lookup table.
     this.members.set(name, member);
+
+    return true;
   }
 
   /**
@@ -136,13 +158,25 @@ class MetaTypeStruct extends MetaType {
 
   /**
    * @param {Buffer} B 
-   * @param {LevelValue} val 
+   * @param {LevelValueStruct} val 
    * @param {number} off 
    * @returns {number} Number of bytes written.
    */
   write(B, val, off) {
     if (val.def != this)
       return 0;
+
+    for (var member of this.members.entries()) {
+      var m = val.getValue(member[0]);
+      if (!m)
+        return 0;
+
+      var n = member[1].write(B, m, off);
+      if (!n)
+        return 0;
+    }
+
+    return this.getSize();
   }
 }
 
