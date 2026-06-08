@@ -2,6 +2,12 @@
   "name": "sldl-objects",
   "version": "1.0.0",
   "main": "main.js",
+  "files": [
+    "src",
+    "main.js",
+    "main.d.ts",
+    "package.json"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
