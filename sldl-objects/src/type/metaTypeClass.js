@@ -1,7 +1,7 @@
 const { Buffer } = require("sldl-utils");
 const { LevelValueClass } = require("../value/levelValueClass.js");
 const { MetaType, kMetaValueType, kMetaTypes } = require("./metaType.js");
-const { kObjectExceptions } = require("../../exceptions.js");
+const { kObjectExceptions } = require("../exceptions.js");
 
 class MetaTypeClassMember extends MetaType {
   constructor(def, name) {

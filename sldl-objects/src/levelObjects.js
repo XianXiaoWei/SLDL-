@@ -1,5 +1,5 @@
 const { Buffer } = require("sldl-utils");
-const { kObjectExceptions } = require("../exceptions.js");
+const { kObjectExceptions } = require("./exceptions.js");
 const { kMetaTypes } = require("./types.js");
 const { kMetaValueType } = require("./type/metaType.js");
 const { MetaTypeClassMemberArray, MetaTypeClassMember } = require("./type/metaTypeClass.js");
