@@ -6,6 +6,7 @@
     "sldl-frontend",
     "sldl-preprocessor",
     "sldl-linker",
-    "sldl-objects"
+    "sldl-objects",
+    "sldl-headers"
   ]
 }
