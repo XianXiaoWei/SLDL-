@@ -226,7 +226,7 @@ export class MetaTypeStruct extends MetaType {
   getAlign(): number;
   valueType(): number;
   addMember(def: MetaType, name: string, count?: number): boolean;
-  finalize(align?: number): void;
+  finalize(align?: number): boolean;
   read(L: LoIndices, B: Buffer, off: number): LevelValueStruct | undefined;
   write(L: LoIndices, B: Buffer, val: LevelValueStruct, off: number): number;
 }

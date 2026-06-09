@@ -5,10 +5,8 @@ Fully-typed `.level.bin` reader and writer for **Sky: Children of the Light** (T
 ## Installation
 
 ```bash
-npm install ./sldl-objects-1.0.0.tgz
+npm install sldl-jsonify
 ```
-
-Requires [`sldl-utils`](../sldl-utils) as a peer dependency.
 
 ## Quick start
 

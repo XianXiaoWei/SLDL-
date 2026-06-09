@@ -123,13 +123,19 @@ class MetaTypeStruct extends MetaType {
   /**
    * Mark the struct as completed and force set the total alignment.
    * @param {number} [align] 
+   * @returns {boolean} False if alignment value is invalid.
    */
   finalize(align) {
-    if (align)
-      this.align = align;
+    align |= 0;
+    if (align <= 0 || (align & (align - 1)))
+      return false;
+
+    this.align = align;
     this.size = this.cursor % this.align
       ? this.cursor - (this.cursor % this.align) + this.align
       : this.cursor;
+
+    return true;
   }
 
   /**
