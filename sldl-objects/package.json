@@ -1,6 +1,6 @@
 {
   "name": "sldl-objects",
-  "version": "1.0.1",
+  "version": "1.1.1",
   "main": "main.js",
   "files": [
     "src",
@@ -19,9 +19,6 @@
   "author": "That Sky Project",
   "license": "LGPL-3.0-or-later",
   "description": "Fully-typed .level.bin reader and writer of Sky:CotL.",
-  "directories": {
-    "test": "test"
-  },
   "devDependencies": {},
   "repository": {
     "type": "git",
