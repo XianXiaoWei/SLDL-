@@ -7,6 +7,7 @@
     "sldl-preprocessor",
     "sldl-linker",
     "sldl-objects",
-    "sldl-headers"
+    "sldl-headers",
+    "sldl-jsonify"
   ]
 }
