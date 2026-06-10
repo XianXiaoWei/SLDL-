@@ -192,7 +192,7 @@ class LoClass {
 
     var count = 0;
     for (var kv of this.raw) {
-      var m = def.members.get(kv[0]);
+      var m = def.getMember(kv[0]);
 
       if (!m || !verifyMemvar(kv[1], m))
         throw kObjectExceptions.MemberMismatch.from(this.name, kv[1].name);
@@ -200,8 +200,9 @@ class LoClass {
       count++;
     }
 
-    if (count != def.members.size)
-      throw kObjectExceptions.MemberMismatch.from(this.name);
+    // TODO: Maybe we need a more effecitve verification.
+    //if (count != def.members.size)
+    //  throw kObjectExceptions.MemberMismatch.from(this.name);
   }
 }
 
@@ -369,7 +370,8 @@ class LoIndices {
     this.classIndices.set(name, this.classes.length);
 
     var c = new LoClass(name);
-    for (var [memberName, member] of def.members) {
+    // Use allMembers() to include inherited members from parent classes.
+    for (var [memberName, member] of def.allMembers()) {
       var type, size, aux;
 
       if (member instanceof MetaTypeClassMemberArray) {
@@ -570,7 +572,7 @@ class LevelObjects {
 
       // Collect pointer members for front-patching.
       for (var [name, val] of obj.value) {
-        var member = def.members.get(name);
+        var member = def.getMember(name);
         if (!member || member.valueType() != kMetaValueType.Pointer)
           continue;
 

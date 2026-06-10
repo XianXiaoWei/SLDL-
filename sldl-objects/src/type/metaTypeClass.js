@@ -100,7 +100,7 @@ class MetaTypeClass extends MetaType {
    * @returns {boolean}
    */
   addMember(def, name, count) {
-    if (this.members.has(name))
+    if (this.getMember(name))
       return false;
 
     var member = typeof count === "number"
@@ -111,6 +111,41 @@ class MetaTypeClass extends MetaType {
     this.members.set(name, member);
 
     return true;
+  }
+
+  /**
+   * @param {string} name 
+   * @returns {MetaTypeClassMemberArray|MetaTypeClassMember|undefined}
+   */
+  getMember(name) {
+    var p = this;
+    while (p) {
+      var m = p.members.get(name)
+      if (m)
+        return m;
+      p = p.parent;
+    }
+    return void 0;
+  }
+
+  /**
+   * Get all members across the inheritance chain.
+   * Members defined in child classes take precedence over parent
+   * members with the same name.
+   * @returns {Array<[string, MetaTypeClassMember]>}
+   */
+  allMembers() {
+    var r = []
+      , seen = new Set();
+    for (var p = this; p; p = p.parent) {
+      for (var [memberName, member] of p.members) {
+        if (seen.has(memberName))
+          continue;
+        seen.add(memberName);
+        r.push([memberName, member]);
+      }
+    }
+    return r;
   }
 
   /**
@@ -135,8 +170,8 @@ class MetaTypeClass extends MetaType {
     cursor += 4 + Buffer.from(name).length + 1;
 
     var r = new LevelValueClass(this, name);
-    for (var member of raw.raw.keys()) {
-      var m = this.members.get(member)
+    for (var memberName of raw.raw.keys()) {
+      var m = this.getMember(memberName)
         , v = m.read(L, B, cursor);
 
       if (!v)
@@ -148,7 +183,7 @@ class MetaTypeClass extends MetaType {
           : L.pointers.push(v);
       }
 
-      r.setValue(member, v);
+      r.setValue(memberName, v);
       cursor += Array.isArray(v)
         ? v.reduce((sum, val) => sum + val.getSize(), 0) + 4
         : v.getSize();
@@ -182,7 +217,7 @@ class MetaTypeClass extends MetaType {
     // Write each member in the raw memvar order from the LoClass.
     var raw = L.classes[classIdx];
     for (var memberName of raw.raw.keys()) {
-      var m = this.members.get(memberName)
+      var m = this.getMember(memberName)
         , v = val.getValue(memberName);
 
       if (!v)

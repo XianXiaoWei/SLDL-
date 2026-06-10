@@ -776,6 +776,7 @@ export class MetaTypeClass extends MetaType {
 
   /**
    * Add a member to the class.
+   * Rejects duplicate names in this class or any ancestor class.
    * @param def Type definition of the member.
    * @param name Name of the member.
    * @param count Passing 0 creates a dynamic array
@@ -783,9 +784,26 @@ export class MetaTypeClass extends MetaType {
    *              creates a bounded static array, and passing undefined or
    *              omitting it creates a regular member
    *              ({@link MetaTypeClassMember}).
-   * @returns True if the member was added, false if the name is a duplicate.
+   * @returns True if the member was added, false if the name already exists
+   *          in this class or an ancestor.
    */
   addMember(def: MetaType, name: string, count?: number): boolean;
+
+  /**
+   * Look up a member by name, walking up the inheritance chain.
+   * Searches this class first, then each parent class.
+   * @param name Member name.
+   * @returns The member if found, or undefined.
+   */
+  getMember(name: string): MetaTypeClassMemberArray | MetaTypeClassMember | undefined;
+
+  /**
+   * Get all members across the inheritance chain as [name, member] pairs.
+   * Members defined in child classes take precedence over parent members
+   * with the same name. Order follows the chain from child to root parent.
+   * @returns Array of [name, member] entries for all members.
+   */
+  allMembers(): Array<[string, MetaTypeClassMemberArray | MetaTypeClassMember]>;
 
   /**
    * Read a class instance (object) from the buffer.
