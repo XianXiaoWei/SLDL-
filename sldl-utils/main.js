@@ -1,4 +1,3 @@
-const { Buffer } = require("./src/buffer.js");
 const {
   SldlException,
   SimpleExceptionBuilder,
