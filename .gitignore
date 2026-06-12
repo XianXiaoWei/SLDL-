@@ -1,5 +1,6 @@
 node_modules/
 dist/
+ida/
 .vscode/
 .vs/
 .VSCodeCounter/
@@ -7,7 +8,10 @@ dist/
 
 package-lock.json
 BstBaked.meshes
-Objects.level.bin
+*.level.bin
+*.level.json
+*.level.yaml
+*.level.yml
 
 *.tgz
 *.zip
