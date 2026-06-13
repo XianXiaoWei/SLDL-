@@ -1,6 +1,6 @@
 var { Buffer } = require("buffer");
 var { LevelValueClass } = require("../value/levelValueClass.js");
-var { MetaType, kMetaValueType, MetaTypeForward } = require("./metaType.js");
+var { MetaType, kMetaValueType, MetaTypeForward, kMetaValueFlag } = require("./metaType.js");
 var { kObjectExceptions } = require("../exceptions.js");
 var { MetaTypePointer } = require("./metaTypePointer.js");
 
@@ -19,6 +19,10 @@ class MetaTypeClassMemberArray extends MetaTypeClassMember {
   constructor(def, name, count) {
     super(def, name);
     this.maxCount = count || 0;
+  }
+
+  valueFlag() {
+    return kMetaValueFlag.Array;
   }
 
   /**
@@ -282,7 +286,7 @@ class MetaTypeClass extends MetaType {
     }
 
     if (vt === kMetaValueType.Pointer) {
-      var p = new (require("../value/levelValuePointer.js").LevelValuePointer)();
+      var p = new (require("../value/levelValuePointer.js").LevelValuePointer)(def);
       p.setIndex(0xFFFFFFFF);
       return p;
     }
@@ -325,8 +329,64 @@ class MetaTypeClass extends MetaType {
   }
 }
 
+/**
+ * Clump generic type, forwarding to the base Clump class with
+ * type-parameter tracking for validation.
+ */
+class MetaTypeClump extends MetaTypeForward {
+  /**
+   * @param {string} name - e.g. "Clump<Actor>"
+   * @param {MetaTypeClass} genericParam - the type parameter T
+   */
+  constructor(name, genericParam) {
+    // Lazy-load to avoid circular dep with types.js.
+    super(require("../types.js").kMetaTypes.Clump, name);
+    /** @type {MetaTypeClass} */
+    this.genericParam = genericParam;
+  }
+
+  /** Forward members access to the base Clump class. */
+  get members() {
+    return this.def.members;
+  }
+
+  get parent() {
+    return this.def.parent;
+  }
+
+  set parent(v) {
+    this.def.parent = v;
+  }
+
+  /** Forward class-level methods to the base Clump. */
+  allMembers(usedMembers) {
+    return this.def.allMembers(usedMembers);
+  }
+
+  getMember(name) {
+    return this.def.getMember(name);
+  }
+
+  addMember(def, name, count) {
+    return this.def.addMember(def, name, count);
+  }
+
+  isCompatible(def) {
+    return this.def.isCompatible(def);
+  }
+
+  valueType() {
+    return kMetaValueType.Class;
+  }
+
+  valueFlag() {
+    return kMetaValueFlag.Clump;
+  }
+}
+
 module.exports = {
   MetaTypeClassMember,
   MetaTypeClassMemberArray,
-  MetaTypeClass
+  MetaTypeClass,
+  MetaTypeClump
 };

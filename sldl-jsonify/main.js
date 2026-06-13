@@ -5,7 +5,14 @@
  * LGPL-3.0-or-later
  */
 
-var { LevelObjects, kMetaTypes, MetaTypeClass } = require("sldl-objects");
+var {
+  MetaTypeClass,
+  MetaTypeClassMemberArray,
+  LevelObjects,
+  LevelValueClass,
+  kMetaTypes,
+  kMetaValueType
+} = require("sldl-objects");
 var { ItaniumResolver, kItaniumTypes } = require("./src/itanium.js");
 var { DeclarationGroup } = require("./src/declGroup.js");
 var jsonValue = require("./src/jsonValue.js");
@@ -120,7 +127,6 @@ class JsonLevelObjects {
       if (!classDef)
         throw kItaniumException.UnrecognizedType.from(className);
 
-      var { LevelValueClass } = require("sldl-objects");
       var lvc = new LevelValueClass(classDef, objName);
 
       for (var [memberName, member] of classDef.allMembers()) {
@@ -153,9 +159,11 @@ class JsonLevelObjects {
 
     if (asJSON) {
       var result = {};
+      var { MetaTypeClump } = require("sldl-objects");
+
       for (var [name, type] of this.declGroup.types) {
-        // Exclude built-in types.
-        if (isBuiltin(name))
+        // Exclude built-in types and Clump<T> generics.
+        if (isBuiltin(name) || type instanceof MetaTypeClump)
           continue;
         var tn = type.getName();
 
@@ -202,7 +210,7 @@ class JsonLevelObjects {
       if (isBuiltin(name) || isBuiltin(rn))
         continue;
       dg.types.set(name, type);
-      if (type.valueType() === 4)
+      if (type.valueType() === kMetaValueType.Class)
         dg.classes.set(name, type);
     }
 
@@ -214,8 +222,15 @@ class JsonLevelObjects {
  * Convert a MetaTypeClassMember to its string representation.
  */
 function memberToString(member) {
-  var { MetaTypeClassMemberArray, kMetaValueType } = require("sldl-objects");
   var typeName = member.def.getName();
+
+  // Get the actual target name for pointer types.
+  var pointerTarget = "Object";
+  if (member.valueType() === kMetaValueType.Pointer
+    && member.def.points
+    && member.def.points !== kMetaTypes.Object) {
+    pointerTarget = member.def.points.getName();
+  }
 
   if (member instanceof MetaTypeClassMemberArray) {
     var suffix = member.maxCount
@@ -223,14 +238,14 @@ function memberToString(member) {
       : "[]";
 
     if (member.valueType() === kMetaValueType.Pointer)
-      return typeName + " *" + suffix;
+      return pointerTarget + " *" + suffix;
     return typeName + " " + suffix;
   }
 
   if (member.valueType() === kMetaValueType.Pointer)
-    return "Object *";
+    return pointerTarget + " *";
 
-  if (member.valueType() === 6 /* Raw */)
+  if (member.valueType() === kMetaValueType.Raw)
     return "R$" + member.getSize();
 
   return typeName;

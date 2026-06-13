@@ -28,7 +28,7 @@ function parse(jsonValue, member, declGroup) {
 
   // Pointers (P$ references).
   if (member.valueType() === kMetaValueType.Pointer) {
-    var ptr = new LevelValuePointer();
+    var ptr = new LevelValuePointer(member.def);
 
     if (jsonValue === null || jsonValue === void 0) {
       ptr.setIndex(0xFFFFFFFF);

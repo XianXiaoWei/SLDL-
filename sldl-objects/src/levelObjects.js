@@ -1,12 +1,16 @@
-var { Buffer } = require("buffer");
-var { kObjectExceptions } = require("./exceptions.js");
-var { kMetaTypes } = require("./types.js");
-var { kMetaValueType, MetaType } = require("./type/metaType.js");
-var { MetaTypeClass } = require("./type/metaTypeClass.js");
-var { MetaTypePointer } = require("./type/metaTypePointer.js");
-var { MetaTypeRaw } = require("./type/metaTypeRaw.js");
-var { LevelValueClass } = require("./value/levelValueClass.js");
-var { LevelValuePointer } = require("./value/levelValuePointer.js");
+const { Buffer } = require("buffer");
+const { kObjectExceptions } = require("./exceptions.js");
+const { kMetaTypes } = require("./types.js");
+const { kMetaValueType, MetaType } = require("./type/metaType.js");
+const {
+  MetaTypeClass,
+  MetaTypeClassMemberArray,
+  MetaTypeClump
+} = require("./type/metaTypeClass.js");
+const { MetaTypePointer } = require("./type/metaTypePointer.js");
+const { MetaTypeRaw } = require("./type/metaTypeRaw.js");
+const { LevelValueClass } = require("./value/levelValueClass.js");
+const { LevelValuePointer } = require("./value/levelValuePointer.js");
 
 // Install natively missing helpers on Buffer.
 if (typeof Buffer.prototype.readStringZero !== "function") {
@@ -26,17 +30,15 @@ if (typeof Buffer.prototype.writeStringZero !== "function") {
   };
 }
 
-// --- Memvar Types ------------------------------------------------------------
-
-var kMemvarTypes = Object.freeze({
+/** Member variable types in TGCL file. */
+const kMemvarTypes = Object.freeze({
   Raw: 0,
   String: 1,
   Ref: 2,
   Array: 3
 });
 
-// --- LoHeader ----------------------------------------------------------------
-
+/** TGCL Header. */
 class LoHeader {
   constructor() {
     this.magic = "TGCL";
@@ -69,9 +71,7 @@ class LoHeader {
   read(B) {
     var magic = B.slice(0, 4).toString("ascii");
     if (magic !== "TGCL")
-      throw new Error("invalid magic: 0x"
-        + B.readUInt32LE(0).toString(16).padStart(8, "0")
-        + ", expected \"TGCL\"");
+      throw kObjectExceptions.HeaderMagicMismatch.from(B.readUInt32LE(0));
 
     this.version = B.readUInt32LE(4);
     this.numClasses = B.readUInt32LE(8);
@@ -104,8 +104,7 @@ class LoHeader {
   }
 }
 
-// --- LoStringPool ------------------------------------------------------------
-
+/** String pool. */
 class LoStringPool {
   static read(B, offset) {
     return B.readStringZero(offset);
@@ -150,9 +149,24 @@ class LoStringPool {
   }
 }
 
-// --- LoMemvar ----------------------------------------------------------------
-
+/** Member variable declaration in TGCL binary file. */
 class LoMemvar {
+  static createRaw(name, size) {
+    return new LoMemvar(kMemvarTypes.Raw, name, size, 0);
+  }
+
+  static createString(name) {
+    return new LoMemvar(kMemvarTypes.String, name, 0, 0);
+  }
+
+  static createRef(name) {
+    return new LoMemvar(kMemvarTypes.Ref, name, 0, 0);
+  }
+
+  static createArray(name, aux) {
+    return new LoMemvar(kMemvarTypes.Array, name, 0, aux);
+  }
+
   constructor(type, name, size, aux) {
     this.type = type;
     this.name = name;
@@ -161,8 +175,7 @@ class LoMemvar {
   }
 }
 
-// --- LoClass -----------------------------------------------------------------
-
+/** Class declaration in TGCL binary file. */
 class LoClass {
   constructor(name) {
     this.name = name;
@@ -180,8 +193,7 @@ class LoClass {
   }
 }
 
-// --- LoIndices ---------------------------------------------------------------
-
+/** Collections of declarations of TGCL binary file. */
 class LoIndices {
   constructor() {
     this.classes = [];
@@ -195,6 +207,9 @@ class LoIndices {
     this.objectIndices = new Map();
   }
 
+  /**
+   * Reset the table.
+   */
   clear() {
     this.classes = [];
     this.memvars = [];
@@ -204,12 +219,16 @@ class LoIndices {
     this.objectIndices.clear();
   }
 
+  /**
+   * Add all JS declarations to the table.
+   * @param {MetaType[]} definitions 
+   */
   define(definitions) {
     this.metaTypes.clear();
     this.metaClasses.clear();
     for (var def of definitions) {
       this.metaTypes.set(def.getName(), def);
-      if (def instanceof MetaTypeClass)
+      if (def instanceof MetaTypeClass || def instanceof MetaTypeClump)
         this.metaClasses.set(def.getName(), def);
     }
   }
@@ -222,7 +241,8 @@ class LoIndices {
     var idx = this.classIndices.get(name);
     if (typeof idx === "undefined") {
       // Clump<T> variants share the "Clump" binary class.
-      if (name.startsWith("Clump<"))
+      var mt = this.metaTypes.get(name);
+      if (mt instanceof MetaTypeClump)
         idx = this.classIndices.get("Clump");
     }
     if (typeof idx === "undefined")
@@ -273,7 +293,7 @@ class LoIndices {
   addClassFromDef(def, usedMembers) {
     var name = def.getName();
     // Clump<T> variants share the "Clump" binary class.
-    var binName = name.startsWith("Clump<") ? "Clump" : name;
+    var binName = def instanceof MetaTypeClump ? "Clump" : name;
 
     if (this.classIndices.has(binName))
       return this.classes[this.classIndices.get(binName)];
@@ -283,11 +303,11 @@ class LoIndices {
     var c = new LoClass(binName);
     this.classes.push(c);
 
-    var MetaTypeClassMemberArray = require("./type/metaTypeClass.js").MetaTypeClassMemberArray;
-
     for (var [memberName, member] of def.allMembers(usedMembers)) {
-      if (member instanceof MetaTypeClassMemberArray
-        && member.def instanceof MetaTypeClass) {
+      if (
+        member instanceof MetaTypeClassMemberArray
+        && member.def instanceof MetaTypeClass
+      ) {
         this.addClassFromDef(member.def, void 0);
       }
     }
@@ -296,17 +316,17 @@ class LoIndices {
     for (var i = 0; i < memberList.length; i++) {
       var memberName = memberList[i][0]
         , member = memberList[i][1]
-        , type, size, aux;
+        , type, size, aux, mv;
 
       if (member instanceof MetaTypeClassMemberArray) {
         type = kMemvarTypes.Array;
         if (member.def instanceof MetaTypeClass) {
           size = 0;
           var mdn = member.def.getName();
-          var mdbn = mdn.startsWith("Clump<") ? "Clump" : mdn;
+          var mdbn = member.def instanceof MetaTypeClump ? "Clump" : mdn;
           aux = this.classIndices.get(mdbn);
         } else if (member.valueType() == kMetaValueType.Pointer) {
-          size = member.getSize ? member.getSize() : 4;
+          size = member.getSize();
           aux = 0xFFFFFFFF;
         } else {
           size = member.def.getSize();
@@ -340,8 +360,7 @@ class LoIndices {
 
 class LevelObjects {
   /**
-   * @param {MetaType[]} definitions - MetaType definitions (from
-   *   ItaniumResolver or DeclarationGroup).
+   * @param {MetaType[]} definitions - MetaType definitions.
    */
   constructor(definitions) {
     this.indices = new LoIndices();

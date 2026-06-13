@@ -8,6 +8,12 @@ var kMetaValueType = Object.freeze({
   Raw: 6,
 });
 
+var kMetaValueFlag = Object.freeze({
+  None: 0,
+  Array: 1,
+  Clump: 2,
+});
+
 /** General type definition. */
 class MetaType {
   /**
@@ -47,6 +53,14 @@ class MetaType {
    */
   valueType() {
     return kMetaValueType.None;
+  }
+
+  /**
+   * Get the value flag enum.
+   * @returns {number}
+   */
+  valueFlag() {
+    return kMetaValueFlag.None;
   }
 
   /**
@@ -96,6 +110,10 @@ class MetaTypeForward extends MetaType {
     return this.def.valueType();
   }
 
+  valueFlag() {
+    return this.def.valueFlag();
+  }
+
   read(L, B, off) {
     return this.def.read(L, B, off);
   }
@@ -108,5 +126,6 @@ class MetaTypeForward extends MetaType {
 module.exports = {
   MetaType,
   MetaTypeForward,
-  kMetaValueType
+  kMetaValueType,
+  kMetaValueFlag
 };

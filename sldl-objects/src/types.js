@@ -4,7 +4,7 @@ var { MetaTypeBool, MetaTypeNumber } = require("./type/metaTypeNumber.js");
 var { MetaTypePointer } = require("./type/metaTypePointer.js");
 var { MetaTypeString } = require("./type/metaTypeString.js");
 
-var kMetaTypes = {
+const kMetaTypes = {
   // Boolean.
   Bool: new MetaTypeBool("bool"),
 
@@ -27,11 +27,14 @@ var kMetaTypes = {
   TgcString: new MetaTypeString("TgcString"),
 
   // Pointer.
-  Pointer: new MetaTypePointer("pointer"),
+  Pointer: null,
 
   // Object - base of all classes.
   Object: new MetaTypeClass("Object", null),
+  Clump: null,
 };
+
+kMetaTypes.Pointer = new MetaTypePointer("Object *", kMetaTypes.Object);
 
 // Clump extends Object with a generic data member.
 // The Clump class itself (without generic) defaults to data: Object*[].
@@ -56,7 +59,8 @@ function getClumpGeneric(typeName) {
   if (cached)
     return cached;
 
-  var clump = new MetaTypeClass(key, kMetaTypes.Clump);
+  var { MetaTypeClump } = require("./type/metaTypeClass.js");
+  var clump = new MetaTypeClump(key, null);
   clumpGenericCache.set(key, clump);
   // Member resolution is deferred - the target type must be resolved later
   // via declGroup when all types are known.

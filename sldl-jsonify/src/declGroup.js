@@ -219,7 +219,7 @@ class DeclarationGroup {
       if (!resolvedT || !(resolvedT instanceof MetaTypeClass))
         throw kItaniumException.UnresolvedTypeName.from(typeParam);
 
-      clumpClass.addMember(new MetaTypePointer("pointer"), "data", 0);
+      clumpClass.addMember(new MetaTypePointer("pointer", kMetaTypes.Object), "data", 0);
       this.classes.set(key, clumpClass);
     }
 
@@ -373,22 +373,28 @@ class DeclarationGroup {
       throw kItaniumException.UnresolvedTypeName.from(typeName);
 
     if (hasPointer) {
-      // Reference types.
-      if (!(resolvedType instanceof MetaTypeClass))
+      // Reference types — accept MetaTypeClass and MetaTypeClump.
+      var { MetaTypeClump } = require("sldl-objects");
+      if (!(resolvedType instanceof MetaTypeClass)
+        && !(resolvedType instanceof MetaTypeClump))
         throw kItaniumException.InvalidMemberSyntax.from(expr);
+
+      var ptrType = new MetaTypePointer(
+        resolvedType.getName() + " *", resolvedType);
 
       if (hasBracket) {
         // Ref array.
-        return { type: new MetaTypeClassMemberArray(kMetaTypes.Pointer, className + "::" + memberName, count), count: void 0 };
+        return { type: new MetaTypeClassMemberArray(ptrType, className + "::" + memberName, count), count: void 0 };
       } else {
         // Single ref.
-        return { type: new MetaTypeClassMember(kMetaTypes.Pointer, className + "::" + memberName), count: void 0 };
+        return { type: new MetaTypeClassMember(ptrType, className + "::" + memberName), count: void 0 };
       }
     }
 
     if (hasBracket) {
       // Inline object array (no *).
-      if (resolvedType instanceof MetaTypeClass) {
+      if (resolvedType instanceof MetaTypeClass
+        || resolvedType instanceof MetaTypeClump) {
         return {
           type: new MetaTypeClassMemberArray(resolvedType, className + "::" + memberName, count),
           count: void 0

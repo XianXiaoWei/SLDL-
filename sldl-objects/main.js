@@ -20,7 +20,8 @@ var { MetaType, MetaTypeForward, kMetaValueType } = require("./src/type/metaType
 var {
   MetaTypeClassMember,
   MetaTypeClassMemberArray,
-  MetaTypeClass
+  MetaTypeClass,
+  MetaTypeClump
 } = require("./src/type/metaTypeClass.js");
 var { MetaTypeBool, MetaTypeNumber } = require("./src/type/metaTypeNumber.js");
 var { MetaTypePointer } = require("./src/type/metaTypePointer.js");
@@ -60,6 +61,7 @@ module.exports = {
   MetaTypeClassMember,
   MetaTypeClassMemberArray,
   MetaTypeClass,
+  MetaTypeClump,
 
   // ./src/type/metaTypeNumber.js
   MetaTypeBool,
