@@ -1,8 +1,28 @@
 var { Buffer } = require("buffer");
 var { LevelValueClass } = require("../value/levelValueClass.js");
+var { LevelValuePointer } = require("../value/levelValuePointer.js");
+var { LevelValueString } = require("../value/levelValueString.js");
+var { LevelValueNumber } = require("../value/levelValueNumber.js");
+var { LevelValueRaw } = require("../value/levelValueRaw.js");
+var { LevelValueStruct } = require("../value/levelValueStruct.js");
 var { MetaType, kMetaValueType, MetaTypeForward, kMetaValueFlag } = require("./metaType.js");
+var { MetaTypeRaw } = require("./metaTypeRaw.js");
 var { kObjectExceptions } = require("../exceptions.js");
 var { MetaTypePointer } = require("./metaTypePointer.js");
+
+// Local copy to avoid circular dep with levelObjects.js.
+var kMemvarTypes = Object.freeze({
+  Raw: 0,
+  String: 1,
+  Ref: 2,
+  Array: 3
+});
+
+var kTypesModule = null;
+function getTypes() {
+  if (!kTypesModule) kTypesModule = require("../types.js");
+  return kTypesModule;
+}
 
 class MetaTypeClassMember extends MetaTypeForward {
   constructor(def, name) {
@@ -79,7 +99,7 @@ class MetaTypeClass extends MetaType {
     super(name);
 
     this.parent = typeof parent === "undefined"
-      ? require("../types.js").kMetaTypes.Object
+      ? getTypes().kMetaTypes.Object
       : parent;
     /** @type {Map<string, MetaTypeClassMember>} */
     this.members = new Map();
@@ -113,7 +133,7 @@ class MetaTypeClass extends MetaType {
 
     var member;
     // If def is already a ClassMember (pre-wrapped by declGroup parser), use it.
-    if (def instanceof MetaTypeClassMember || def instanceof MetaTypeClassMemberArray) {
+    if (def instanceof MetaTypeClassMember || def.valueFlag() === kMetaValueFlag.Array) {
       member = def;
     } else if (typeof count === "number") {
       member = new MetaTypeClassMemberArray(def, this.name + "::" + name, count);
@@ -185,7 +205,7 @@ class MetaTypeClass extends MetaType {
       if (m) {
         // Known member - read with its type.
         v = m.read(L, B, cursor,
-          m.def instanceof MetaTypeClass
+          (m.def.valueType() === kMetaValueType.Class || m.def.valueFlag() === kMetaValueFlag.Clump)
             ? L.classes[L.getClassIdx(m.def.getName())]
             : void 0);
       } else {
@@ -193,20 +213,18 @@ class MetaTypeClass extends MetaType {
         // raw-type member to the definition if needed.
         var rawMemvar = raw ? raw.raw.get(memberName) : void 0;
         if (rawMemvar) {
-          if (rawMemvar.type === 1 /* string */) {
-            v = require("../types.js").kMetaTypes.CString.read(L, B, cursor);
-          } else if (rawMemvar.type === 2 /* ref */) {
-            v = require("../types.js").kMetaTypes.Pointer.read(L, B, cursor);
+          if (rawMemvar.type === kMemvarTypes.String) {
+            v = getTypes().kMetaTypes.CString.read(L, B, cursor);
+          } else if (rawMemvar.type === kMemvarTypes.Ref) {
+            v = getTypes().kMetaTypes.Pointer.read(L, B, cursor);
           } else {
             // raw or array - read raw bytes.
             var size = rawMemvar.size || 4;
-            var MetaTypeRaw = require("./metaTypeRaw.js").MetaTypeRaw;
             v = new MetaTypeRaw("raw", size).read(L, B, cursor);
           }
         } else {
           // Fallback: skip 4 bytes.
-          var MetaTypeRaw2 = require("./metaTypeRaw.js").MetaTypeRaw;
-          v = new MetaTypeRaw2("raw", 4).read(L, B, cursor);
+          v = new MetaTypeRaw("raw", 4).read(L, B, cursor);
         }
       }
 
@@ -281,49 +299,45 @@ class MetaTypeClass extends MetaType {
     var vt = member.valueType();
     var def = member.def;
 
-    if (member instanceof MetaTypeClassMemberArray) {
+    if (member.valueFlag() === kMetaValueFlag.Array) {
       return [];
     }
 
     if (vt === kMetaValueType.Pointer) {
-      var p = new (require("../value/levelValuePointer.js").LevelValuePointer)(def);
+      var p = new LevelValuePointer(def);
       p.setIndex(0xFFFFFFFF);
       return p;
     }
 
     if (vt === kMetaValueType.String) {
-      var s = new (require("../value/levelValueString.js").LevelValueString)(def);
+      var s = new LevelValueString(def);
       s.setValue("");
       return s;
     }
 
     if (vt === kMetaValueType.Number) {
-      var n = new (require("../value/levelValueNumber.js").LevelValueNumber)(def);
+      var n = new LevelValueNumber(def);
       n.setValue(0);
       return n;
     }
 
     if (vt === kMetaValueType.Raw) {
-      var r = new (require("../value/levelValueRaw.js").LevelValueRaw)(def);
+      var r = new LevelValueRaw(def);
       r.setValue(Buffer.alloc(def.getSize()));
       return r;
     }
 
     if (vt === kMetaValueType.Struct) {
-      var st = new (require("../value/levelValueStruct.js").LevelValueStruct)(def);
+      var st = new LevelValueStruct(def);
       for (var [name, sm] of def.members) {
         var sv = MetaTypeClass.memberTypeDefault(sm);
-        if (Array.isArray(sv)) {
-          st.setValue(name, sv);
-        } else {
-          st.setValue(name, sv);
-        }
+        st.setValue(name, sv);
       }
       return st;
     }
 
     // Fallback - return zero-valued number.
-    var fallback = new (require("../value/levelValueNumber.js").LevelValueNumber)(def);
+    var fallback = new LevelValueNumber(def);
     fallback.setValue(0);
     return fallback;
   }
@@ -340,7 +354,7 @@ class MetaTypeClump extends MetaTypeForward {
    */
   constructor(name, genericParam) {
     // Lazy-load to avoid circular dep with types.js.
-    super(require("../types.js").kMetaTypes.Clump, name);
+    super(getTypes().kMetaTypes.Clump, name);
     /** @type {MetaTypeClass} */
     this.genericParam = genericParam;
   }

@@ -1,7 +1,7 @@
 const { Buffer } = require("buffer");
 const { kObjectExceptions } = require("./exceptions.js");
 const { kMetaTypes } = require("./types.js");
-const { kMetaValueType, MetaType } = require("./type/metaType.js");
+const { kMetaValueType, kMetaValueFlag, MetaType } = require("./type/metaType.js");
 const {
   MetaTypeClass,
   MetaTypeClassMemberArray,
@@ -228,7 +228,7 @@ class LoIndices {
     this.metaClasses.clear();
     for (var def of definitions) {
       this.metaTypes.set(def.getName(), def);
-      if (def instanceof MetaTypeClass || def instanceof MetaTypeClump)
+      if (def.valueType() === kMetaValueType.Class || def.valueFlag() === kMetaValueFlag.Clump)
         this.metaClasses.set(def.getName(), def);
     }
   }
@@ -242,7 +242,7 @@ class LoIndices {
     if (typeof idx === "undefined") {
       // Clump<T> variants share the "Clump" binary class.
       var mt = this.metaTypes.get(name);
-      if (mt instanceof MetaTypeClump)
+      if (mt.valueFlag() === kMetaValueFlag.Clump)
         idx = this.classIndices.get("Clump");
     }
     if (typeof idx === "undefined")
@@ -293,7 +293,7 @@ class LoIndices {
   addClassFromDef(def, usedMembers) {
     var name = def.getName();
     // Clump<T> variants share the "Clump" binary class.
-    var binName = def instanceof MetaTypeClump ? "Clump" : name;
+    var binName = def.valueFlag() === kMetaValueFlag.Clump ? "Clump" : name;
 
     if (this.classIndices.has(binName))
       return this.classes[this.classIndices.get(binName)];
@@ -303,27 +303,28 @@ class LoIndices {
     var c = new LoClass(binName);
     this.classes.push(c);
 
-    for (var [memberName, member] of def.allMembers(usedMembers)) {
-      if (
-        member instanceof MetaTypeClassMemberArray
-        && member.def instanceof MetaTypeClass
-      ) {
+    var memberList = def.allMembers(usedMembers);
+
+    // Recursively register inline class array element types first.
+    for (var mi = 0; mi < memberList.length; mi++) {
+      var member = memberList[mi][1];
+      if (member.valueFlag() === kMetaValueFlag.Array
+        && (member.def.valueType() === kMetaValueType.Class || member.def.valueFlag() === kMetaValueFlag.Clump)) {
         this.addClassFromDef(member.def, void 0);
       }
     }
 
-    var memberList = def.allMembers(usedMembers);
     for (var i = 0; i < memberList.length; i++) {
       var memberName = memberList[i][0]
         , member = memberList[i][1]
         , type, size, aux, mv;
 
-      if (member instanceof MetaTypeClassMemberArray) {
+      if (member.valueFlag() === kMetaValueFlag.Array) {
         type = kMemvarTypes.Array;
-        if (member.def instanceof MetaTypeClass) {
+        if ((member.def.valueType() === kMetaValueType.Class || member.def.valueFlag() === kMetaValueFlag.Clump)) {
           size = 0;
           var mdn = member.def.getName();
-          var mdbn = member.def instanceof MetaTypeClump ? "Clump" : mdn;
+          var mdbn = member.def.valueFlag() === kMetaValueFlag.Clump ? "Clump" : mdn;
           aux = this.classIndices.get(mdbn);
         } else if (member.valueType() == kMetaValueType.Pointer) {
           size = member.getSize();
@@ -677,7 +678,6 @@ class LevelObjects {
       , fileSize = objectsOffset + objCursor;
 
     var header = new LoHeader();
-    header.initialize();
     header.numClasses = L.classes.length;
     header.numMemVars = L.memvars.length;
     header.numObjects = L.objects.length;
