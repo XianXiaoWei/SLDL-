@@ -1,5 +1,5 @@
-var { Buffer } = require("buffer");
-var { LevelValue } = require("./levelValue.js");
+const { Buffer } = require("buffer");
+const { LevelValue } = require("./levelValue.js");
 
 class LevelValueRaw extends LevelValue {
   constructor(def) {

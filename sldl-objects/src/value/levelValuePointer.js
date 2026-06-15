@@ -1,5 +1,5 @@
-var { kObjectExceptions } = require("../exceptions.js");
-var { LevelValue } = require("./levelValue.js");
+const { kObjectExceptions } = require("../exceptions.js");
+const { LevelValue } = require("./levelValue.js");
 
 class LevelValuePointer extends LevelValue {
   /**

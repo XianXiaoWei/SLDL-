@@ -1,14 +1,15 @@
-var { Buffer } = require("buffer");
-var { LevelValueClass } = require("../value/levelValueClass.js");
-var { LevelValuePointer } = require("../value/levelValuePointer.js");
-var { LevelValueString } = require("../value/levelValueString.js");
-var { LevelValueNumber } = require("../value/levelValueNumber.js");
-var { LevelValueRaw } = require("../value/levelValueRaw.js");
-var { LevelValueStruct } = require("../value/levelValueStruct.js");
-var { MetaType, kMetaValueType, MetaTypeForward, kMetaValueFlag } = require("./metaType.js");
-var { MetaTypeRaw } = require("./metaTypeRaw.js");
-var { kObjectExceptions } = require("../exceptions.js");
-var { MetaTypePointer } = require("./metaTypePointer.js");
+const { Buffer } = require("buffer");
+const { LevelValue } = require("../value/levelValue.js");
+const { LevelValueClass } = require("../value/levelValueClass.js");
+const { LevelValuePointer } = require("../value/levelValuePointer.js");
+const { LevelValueString } = require("../value/levelValueString.js");
+const { LevelValueNumber } = require("../value/levelValueNumber.js");
+const { LevelValueRaw } = require("../value/levelValueRaw.js");
+const { LevelValueStruct } = require("../value/levelValueStruct.js");
+const { MetaType, kMetaValueType, MetaTypeForward, kMetaValueFlag } = require("./metaType.js");
+const { MetaTypeRaw } = require("./metaTypeRaw.js");
+const { kObjectExceptions } = require("../exceptions.js");
+const { MetaTypePointer } = require("./metaTypePointer.js");
 
 // Local copy to avoid circular dep with levelObjects.js.
 var kMemvarTypes = Object.freeze({
@@ -22,6 +23,29 @@ var kTypesModule = null;
 function getTypes() {
   if (!kTypesModule) kTypesModule = require("../types.js");
   return kTypesModule;
+}
+
+// Binary class descriptor to pass when reading a class/clump member, so that
+// the member can iterate its own binary memvar order. Returns undefined for
+// non-class members.
+function classRawFor(L, def) {
+  if (def.valueType() === kMetaValueType.Class
+    || def.valueFlag() === kMetaValueFlag.Clump)
+    return L.classes[L.getClassIdx(def.getName())];
+  return void 0;
+}
+
+// Read a member that has no matching definition, using its raw memvar
+// descriptor to choose the representation (string / pointer / raw bytes).
+function readUnknownMember(L, B, off, rawMemvar) {
+  var T = getTypes().kMetaTypes;
+  if (!rawMemvar)
+    return new MetaTypeRaw("raw", 4).read(L, B, off);
+  if (rawMemvar.type === kMemvarTypes.String)
+    return T.CString.read(L, B, off);
+  if (rawMemvar.type === kMemvarTypes.Ref)
+    return T.Pointer.read(L, B, off);
+  return new MetaTypeRaw("raw", rawMemvar.size || 4).read(L, B, off);
 }
 
 class MetaTypeClassMember extends MetaTypeForward {
@@ -200,47 +224,30 @@ class MetaTypeClass extends MetaType {
     for (var i = 0; i < memberNames.length; i++) {
       var memberName = memberNames[i]
         , m = this.getMember(memberName)
+        , rawMemvar = raw ? raw.raw.get(memberName) : void 0
         , v;
 
-      if (m) {
-        // Known member - read with its type.
-        v = m.read(L, B, cursor,
-          (m.def.valueType() === kMetaValueType.Class || m.def.valueFlag() === kMetaValueFlag.Clump)
-            ? L.classes[L.getClassIdx(m.def.getName())]
-            : void 0);
-      } else {
-        // Unknown member - read as raw. The caller has already added a
-        // raw-type member to the definition if needed.
-        var rawMemvar = raw ? raw.raw.get(memberName) : void 0;
-        if (rawMemvar) {
-          if (rawMemvar.type === kMemvarTypes.String) {
-            v = getTypes().kMetaTypes.CString.read(L, B, cursor);
-          } else if (rawMemvar.type === kMemvarTypes.Ref) {
-            v = getTypes().kMetaTypes.Pointer.read(L, B, cursor);
-          } else {
-            // raw or array - read raw bytes.
-            var size = rawMemvar.size || 4;
-            v = new MetaTypeRaw("raw", size).read(L, B, cursor);
-          }
-        } else {
-          // Fallback: skip 4 bytes.
-          v = new MetaTypeRaw("raw", 4).read(L, B, cursor);
-        }
+      try {
+        v = m
+          ? m.read(L, B, cursor, classRawFor(L, m.def))
+          : readUnknownMember(L, B, cursor, rawMemvar);
+      } catch (e) {
+        v = void 0;
       }
 
-      if (!v)
-        return void 0;
+      if (!v) {
+        // Gracefully skip: advance cursor by the memvar's declared size.
+        cursor += rawMemvar ? (rawMemvar.size || 4) : (m ? m.getSize() : 4);
+        continue;
+      }
 
-      if (m && m.valueType() == kMetaValueType.Pointer) {
+      if (m && m.valueType() == kMetaValueType.Pointer)
         Array.isArray(v)
           ? L.pointers.push.apply(L.pointers, v)
           : L.pointers.push(v);
-      }
 
       r.setValue(memberName, v);
-      cursor += Array.isArray(v)
-        ? v.reduce(function (sum, val) { return sum + val.getSize(); }, 4)
-        : v.getSize();
+      cursor += LevelValue.sizeOf(v);
     }
 
     r.finalize();
@@ -253,16 +260,20 @@ class MetaTypeClass extends MetaType {
    * @param {Buffer} B
    * @param {LevelValueClass} val
    * @param {number} off
-   * @param {Set<string>} [usedMembers] - only write members in this set.
+   * @param {LoClass} [raw] - binary class descriptor for member iteration
+   *   order. If omitted, definition order is used.
    * @returns {number} Number of bytes written, or 0 on failure.
    */
-  write(L, B, val, off, usedMembers) {
+  write(L, B, val, off, raw) {
     var cursor = off
-      , members = this.allMembers(usedMembers);
+      // Use binary memvar order when available.
+      , memberNames = raw
+        ? Array.from(raw.raw.keys())
+        : this.allMembers().map(function (e) { return e[0]; });
 
-    for (var i = 0; i < members.length; i++) {
-      var memberName = members[i][0]
-        , m = members[i][1]
+    for (var i = 0; i < memberNames.length; i++) {
+      var memberName = memberNames[i]
+        , m = this.getMember(memberName)
         , v = val.getValue(memberName);
 
       if (!v) {

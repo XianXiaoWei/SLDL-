@@ -1,5 +1,5 @@
-var { LevelValueStruct } = require("../value/levelValueStruct.js");
-var { MetaType, MetaTypeForward, kMetaValueType } = require("./metaType.js");
+const { LevelValueStruct } = require("../value/levelValueStruct.js");
+const { MetaType, MetaTypeForward, kMetaValueType } = require("./metaType.js");
 
 class MetaTypeStructMember extends MetaTypeForward {
   /**

@@ -33,6 +33,9 @@ const kObjectExceptions = Object.freeze({
   UndeclaredSymbol: new DynamicExceptionBuilder(function (name) {
     return `symbol "${name}" is not declared in the declaration group`;
   }),
+  UnresolvedObjectReference: new DynamicExceptionBuilder(function (name) {
+    return `unresolved object reference: ${name}`;
+  }),
 });
 
 module.exports = {

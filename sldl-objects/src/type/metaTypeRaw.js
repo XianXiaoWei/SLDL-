@@ -1,6 +1,6 @@
-var { Buffer } = require("buffer");
-var { MetaType, kMetaValueType } = require("./metaType.js");
-var { LevelValueRaw } = require("../value/levelValueRaw.js");
+const { Buffer } = require("buffer");
+const { MetaType, kMetaValueType } = require("./metaType.js");
+const { LevelValueRaw } = require("../value/levelValueRaw.js");
 
 class MetaTypeRaw extends MetaType {
   /**

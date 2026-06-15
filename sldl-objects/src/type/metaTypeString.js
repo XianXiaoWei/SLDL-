@@ -1,6 +1,6 @@
-var { Buffer } = require("buffer");
-var { MetaType, kMetaValueType } = require("./metaType.js");
-var { LevelValueString } = require("../value/levelValueString.js");
+const { Buffer } = require("buffer");
+const { MetaType, kMetaValueType } = require("./metaType.js");
+const { LevelValueString } = require("../value/levelValueString.js");
 
 class MetaTypeString extends MetaType {
   constructor(name) {
@@ -19,7 +19,13 @@ class MetaTypeString extends MetaType {
    */
   read(L, B, off) {
     var r = new LevelValueString(this);
-    r.setValue(B.readStringZero(off));
+    // Scan for the null terminator and keep the exact bytes. The consumed
+    // size must be the on-disk byte span, not the re-encoded length of the
+    // decoded string (see LevelValueString for the rationale).
+    var end = off;
+    while (end < B.length && B[end])
+      end++;
+    r.setRaw(Buffer.from(B.subarray(off, end)));
     return r;
   }
 
@@ -33,8 +39,10 @@ class MetaTypeString extends MetaType {
   write(L, B, val, off) {
     if (val.def != this)
       return 0;
-    B.writeStringZero(val.getValue() + "\0", off);
-    return val.getSize();
+    var bytes = val.getBytes();
+    bytes.copy(B, off);
+    B[off + bytes.length] = 0;
+    return bytes.length + 1;
   }
 }
 

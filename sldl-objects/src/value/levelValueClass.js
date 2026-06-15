@@ -1,7 +1,7 @@
-var { LevelValue } = require("./levelValue.js");
-var { LevelValuePointer } = require("./levelValuePointer.js");
-var { LevelValueRaw } = require("./levelValueRaw.js");
-var { kMetaValueType } = require("../type/metaType.js");
+const { LevelValue } = require("./levelValue.js");
+const { LevelValuePointer } = require("./levelValuePointer.js");
+const { LevelValueRaw } = require("./levelValueRaw.js");
+const { kMetaValueType } = require("../type/metaType.js");
 
 class LevelValueClass extends LevelValue {
   constructor(def, name) {
@@ -21,11 +21,8 @@ class LevelValueClass extends LevelValue {
 
   finalize() {
     var size = 0;
-    for (var m of this.value.values()) {
-      size += Array.isArray(m)
-        ? m.reduce(function (sum, val) { return sum + val.getSize(); }, 4)
-        : m.getSize();
-    }
+    for (var m of this.value.values())
+      size += LevelValue.sizeOf(m);
     this.size = size;
   }
 

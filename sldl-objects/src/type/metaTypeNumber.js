@@ -1,5 +1,5 @@
-var { MetaType, kMetaValueType } = require("./metaType.js");
-var { LevelValueBool, LevelValueNumber } = require("../value/levelValueNumber.js");
+const { MetaType, kMetaValueType } = require("./metaType.js");
+const { LevelValueBool, LevelValueNumber } = require("../value/levelValueNumber.js");
 
 class MetaTypeBool extends MetaType {
   constructor(name) {

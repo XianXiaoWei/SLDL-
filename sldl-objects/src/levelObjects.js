@@ -220,6 +220,15 @@ class LoIndices {
   }
 
   /**
+   * Reset the per-file tables and re-register the current meta type
+   * definitions. Used to move between read and write phases.
+   */
+  redefine() {
+    this.clear();
+    this.define(Array.from(this.metaTypes.values()));
+  }
+
+  /**
    * Add all JS declarations to the table.
    * @param {MetaType[]} definitions 
    */
@@ -295,36 +304,46 @@ class LoIndices {
     // Clump<T> variants share the "Clump" binary class.
     var binName = def.valueFlag() === kMetaValueFlag.Clump ? "Clump" : name;
 
-    if (this.classIndices.has(binName))
-      return this.classes[this.classIndices.get(binName)];
-
-    this.classIndices.set(binName, this.classes.length);
-
-    var c = new LoClass(binName);
-    this.classes.push(c);
+    if (this.classIndices.has(binName)) {
+      var existing = this.classes[this.classIndices.get(binName)];
+      // If already fully populated, return early.
+      // If pre-registered but not yet filled, fall through to add memvars.
+      if (existing.raw.size > 0)
+        return existing;
+      var c = existing;
+    } else {
+      this.classIndices.set(binName, this.classes.length);
+      c = new LoClass(binName);
+      this.classes.push(c);
+    }
 
     var memberList = def.allMembers(usedMembers);
 
-    // Recursively register inline class array element types first.
+    // Phase 1: Pre-register inline element class indices (no memvars yet)
+    // so that aux values can be computed in phase 2.
     for (var mi = 0; mi < memberList.length; mi++) {
       var member = memberList[mi][1];
       if (member.valueFlag() === kMetaValueFlag.Array
         && (member.def.valueType() === kMetaValueType.Class || member.def.valueFlag() === kMetaValueFlag.Clump)) {
-        this.addClassFromDef(member.def, void 0);
+        var elemBinName = member.def.valueFlag() === kMetaValueFlag.Clump ? "Clump" : member.def.getName();
+        if (!this.classIndices.has(elemBinName)) {
+          this.classIndices.set(elemBinName, this.classes.length);
+          this.classes.push(new LoClass(elemBinName));
+        }
       }
     }
 
+    // Phase 2: Add THIS class's own memvars (parent before children).
     for (var i = 0; i < memberList.length; i++) {
       var memberName = memberList[i][0]
         , member = memberList[i][1]
-        , type, size, aux, mv;
+        , type, size, aux;
 
       if (member.valueFlag() === kMetaValueFlag.Array) {
         type = kMemvarTypes.Array;
         if ((member.def.valueType() === kMetaValueType.Class || member.def.valueFlag() === kMetaValueFlag.Clump)) {
           size = 0;
-          var mdn = member.def.getName();
-          var mdbn = member.def.valueFlag() === kMetaValueFlag.Clump ? "Clump" : mdn;
+          var mdbn = member.def.valueFlag() === kMetaValueFlag.Clump ? "Clump" : member.def.getName();
           aux = this.classIndices.get(mdbn);
         } else if (member.valueType() == kMetaValueType.Pointer) {
           size = member.getSize();
@@ -353,6 +372,16 @@ class LoIndices {
     }
 
     this.metaClasses.set(name, def);
+
+    // Phase 3: Recursively fill element class memvars (after parent's memvars).
+    for (var mi = 0; mi < memberList.length; mi++) {
+      var member = memberList[mi][1];
+      if (member.valueFlag() === kMetaValueFlag.Array
+        && (member.def.valueType() === kMetaValueType.Class || member.def.valueFlag() === kMetaValueFlag.Clump)) {
+        this.addClassFromDef(member.def, void 0);
+      }
+    }
+
     return c;
   }
 }
@@ -423,8 +452,7 @@ class LevelObjects {
     var header = new LoHeader().read(buffer);
     var L = this.indices;
 
-    L.clear();
-    L.define(Array.from(L.metaTypes.values()));
+    L.redefine();
 
     // Read memvars from binary.
     for (var i = 0; i < header.numMemVars; i++) {
@@ -452,56 +480,20 @@ class LevelObjects {
       var c = L.classes[j];
       var def = L.metaClasses.get(c.name);
 
-      if (!def) {
-        // Auto-create unknown class.
+      if (def) {
+        // Known class: register members present in the binary but missing
+        // from the definition.
+        for (var [memName, memvar] of c.raw)
+          if (!def.getMember(memName))
+            addMemberFromMemvar(def, L.classes, c.name, memName, memvar);
+      } else {
+        // Unknown class: synthesize a definition from the binary memvars.
         def = new MetaTypeClass(c.name, kMetaTypes.Object);
         def.isAutoCreated = true;
-
-        for (var [memName, memvar] of c.raw) {
-          if (memvar.type === kMemvarTypes.Raw)
-            def.addMember(new MetaTypeRaw(c.name + "::" + memName, memvar.size || 4), memName);
-          else if (memvar.type === kMemvarTypes.String)
-            def.addMember(kMetaTypes.CString, memName);
-          else if (memvar.type === kMemvarTypes.Ref)
-            def.addMember(kMetaTypes.Pointer, memName);
-          else if (memvar.type === kMemvarTypes.Array) {
-            if (memvar.aux === 0xFFFFFFFF)
-              def.addMember(kMetaTypes.Pointer, memName, 0);
-            else if (memvar.aux >= 0 && memvar.aux < L.classes.length
-              && L.classes[memvar.aux].def) {
-              var elemDef = L.classes[memvar.aux].def;
-              def.addMember(elemDef, memName, 0);
-            } else
-              def.addMember(kMetaTypes.Pointer, memName, 0);
-          } else
-            def.addMember(new MetaTypeRaw(c.name + "::" + memName, memvar.size || 4), memName);
-        }
-
+        for (var [memName, memvar] of c.raw)
+          addMemberFromMemvar(def, L.classes, c.name, memName, memvar);
         L.metaClasses.set(c.name, def);
         L.metaTypes.set(c.name, def);
-      } else {
-        // Check for unknown members.
-        for (var [memName, memvar] of c.raw) {
-          if (!def.getMember(memName)) {
-            if (memvar.type === kMemvarTypes.Raw)
-              def.addMember(new MetaTypeRaw(c.name + "::" + memName, memvar.size || 4), memName);
-            else if (memvar.type === kMemvarTypes.String)
-              def.addMember(kMetaTypes.CString, memName);
-            else if (memvar.type === kMemvarTypes.Ref)
-              def.addMember(kMetaTypes.Pointer, memName);
-            else if (memvar.type === kMemvarTypes.Array) {
-              if (memvar.aux === 0xFFFFFFFF)
-                def.addMember(kMetaTypes.Pointer, memName, 0);
-              else if (memvar.aux >= 0 && memvar.aux < L.classes.length
-                && L.classes[memvar.aux].def) {
-                var elemDef2 = L.classes[memvar.aux].def;
-                def.addMember(elemDef2, memName, 0);
-              } else
-                def.addMember(kMetaTypes.Pointer, memName, 0);
-            } else
-              def.addMember(new MetaTypeRaw(c.name + "::" + memName, 4), memName);
-          }
-        }
       }
 
       c.setDef(def);
@@ -515,7 +507,12 @@ class LevelObjects {
       if (classIdx >= L.classes.length || classIdx < 0)
         throw kObjectExceptions.InvalidClassIndex.from(classIdx);
 
-      cursor += 4 + Buffer.from(name).length + 1;
+      // Advance past the inline name by its on-disk byte span, not the
+      // re-encoded length of the decoded string.
+      var nameEnd = cursor + 4;
+      while (nameEnd < buffer.length && buffer[nameEnd])
+        nameEnd++;
+      cursor = nameEnd + 1;
 
       var raw = L.classes[classIdx];
       if (!raw)
@@ -548,11 +545,7 @@ class LevelObjects {
       L.pointers[pi].backpatch(L);
 
     // Reset indices for write use.
-    L.clear();
-    var defs = [];
-    for (var [dname, d] of L.metaTypes)
-      defs.push(d);
-    L.define(defs);
+    L.redefine();
 
     return this.objects;
   }
@@ -569,11 +562,7 @@ class LevelObjects {
     var um = usedMembers || this.usedMembers;
 
     // Reset indices and rebuild from meta types with pruning.
-    L.clear();
-    var defs = [];
-    for (var [dname, d] of L.metaTypes)
-      defs.push(d);
-    L.define(defs);
+    L.redefine();
 
     // Collect which classes are directly used by objects.
     var usedClassNames = new Set();
@@ -645,7 +634,7 @@ class LevelObjects {
     var totalObjSize = 0;
     for (var oi = 0; oi < L.objects.length; oi++) {
       var o = L.objects[oi];
-      totalObjSize += 4 + Buffer.from(o.getName()).length + 1 + o.getSize();
+      totalObjSize += 4 + Buffer.byteLength(o.getName()) + 1 + o.getSize();
     }
 
     var objBuf = Buffer.allocUnsafe(totalObjSize)
@@ -663,8 +652,8 @@ class LevelObjects {
       nameBuf.copy(objBuf, objCursor);
       objCursor += nameBuf.length;
 
-      var um2 = um.get(o.getDef().getName());
-      var n = o.getDef().write(L, objBuf, o, objCursor, um2);
+      var raw2 = L.classes[cIdx];
+      var n = o.getDef().write(L, objBuf, o, objCursor, raw2);
       if (!n)
         throw kObjectExceptions.ReadObjectFailed.from();
       objCursor += n;
@@ -700,6 +689,34 @@ class LevelObjects {
 }
 
 /**
+ * Register a member on `def` from a binary memvar descriptor, choosing the
+ * representation that matches the memvar type. `classes` is the binary class
+ * table, used to resolve inline class-array element types.
+ * @param {MetaTypeClass} def
+ * @param {LoClass[]} classes
+ * @param {string} className
+ * @param {string} memName
+ * @param {LoMemvar} memvar
+ */
+function addMemberFromMemvar(def, classes, className, memName, memvar) {
+  if (memvar.type === kMemvarTypes.String)
+    return def.addMember(kMetaTypes.CString, memName);
+  if (memvar.type === kMemvarTypes.Ref)
+    return def.addMember(kMetaTypes.Pointer, memName);
+  if (memvar.type === kMemvarTypes.Array) {
+    // Inline array of a known class; otherwise (ref array 0xFFFFFFFF or an
+    // unresolved element type) fall back to a pointer array.
+    if (memvar.aux !== 0xFFFFFFFF && memvar.aux >= 0
+      && memvar.aux < classes.length && classes[memvar.aux].def)
+      return def.addMember(classes[memvar.aux].def, memName, 0);
+    return def.addMember(kMetaTypes.Pointer, memName, 0);
+  }
+  // Raw, and any unrecognized memvar type, are fixed-size byte blobs.
+  return def.addMember(
+    new MetaTypeRaw(className + "::" + memName, memvar.size || 4), memName);
+}
+
+/**
  * Read raw object member data using binary memvar information directly.
  * Used when no proper class definition is available (auto-created classes).
  */
@@ -708,75 +725,103 @@ function readRawMembers(L, B, off, raw, def, name) {
     , cursor = off;
 
   for (var [memName, memvar] of raw.raw) {
-    var v, size;
-
-    if (memvar.type === kMemvarTypes.Raw) {
-      size = memvar.size || 4;
-      var rawType = new MetaTypeRaw(def.getName() + "::" + memName, size);
-      v = rawType.read(L, B, cursor);
-    } else if (memvar.type === kMemvarTypes.String) {
-      v = kMetaTypes.CString.read(L, B, cursor);
-      size = v.getSize();
-    } else if (memvar.type === kMemvarTypes.Ref) {
-      v = kMetaTypes.Pointer.read(L, B, cursor);
-      size = 4;
-    } else if (memvar.type === kMemvarTypes.Array) {
-      var count = B.readUInt32LE(cursor);
-      var elemCursor = cursor + 4;
-      var elemType = memvar.aux;
-
-      if (elemType === 0xFFFFFFFF) {
-        var elements = [];
-        for (var ei = 0; ei < count; ei++) {
-          var p = kMetaTypes.Pointer.read(L, B, elemCursor);
-          elements.push(p);
-          elemCursor += 4;
-        }
-        size = 4 + count * 4;
-        v = elements;
-      } else if (elemType >= 0 && elemType < L.classes.length) {
-        var elements = [];
-        var subRaw = L.classes[elemType];
-        var subDef = subRaw.def;
-        for (var ei = 0; ei < count; ei++) {
-          var subResult;
-          if (subDef && subDef.isAutoCreated) {
-            subResult = readRawMembers(L, B, elemCursor, subRaw, subDef, "");
-          } else {
-            var subObj = subDef.read(L, B, elemCursor, subRaw);
-            subResult = { obj: subObj, size: subObj.getSize() };
-          }
-          elements.push(subResult.obj);
-          elemCursor += subResult.size;
-        }
-        size = elemCursor - cursor;
-        v = elements;
-      } else {
-        var elemSize = memvar.size || 4;
-        size = 4 + count * elemSize;
-        var rawArrType = new MetaTypeRaw(def.getName() + "::" + memName, size);
-        v = rawArrType.read(L, B, cursor);
-      }
-    } else {
-      size = memvar.size || 4;
-      var rawType2 = new MetaTypeRaw(def.getName() + "::" + memName, size);
-      v = rawType2.read(L, B, cursor);
+    var result;
+    try {
+      result = readRawMember(L, B, cursor, memvar, def, memName);
+    } catch (e) {
+      result = void 0;
     }
 
-    if (!v)
-      throw kObjectExceptions.ReadObjectFailed.from();
+    if (!result || !result.value) {
+      // Best-effort skip past the declared size.
+      cursor += memvar.size || 4;
+      continue;
+    }
 
+    var v = result.value;
     if (memvar.type === kMemvarTypes.Ref)
       L.pointers.push(v);
     else if (memvar.type === kMemvarTypes.Array && memvar.aux === 0xFFFFFFFF)
       L.pointers.push.apply(L.pointers, v);
 
     obj.setValue(memName, v);
-    cursor += size;
+    cursor += result.size;
   }
 
   obj.finalize();
   return { obj: obj, size: cursor - off };
+}
+
+/**
+ * Read one raw member at `off`. Returns its value and on-disk byte size.
+ * @returns {{value: LevelValue|LevelValue[], size: number}}
+ */
+function readRawMember(L, B, off, memvar, def, memName) {
+  if (memvar.type === kMemvarTypes.String) {
+    var sv = kMetaTypes.CString.read(L, B, off);
+    return { value: sv, size: sv.getSize() };
+  }
+  if (memvar.type === kMemvarTypes.Ref)
+    return { value: kMetaTypes.Pointer.read(L, B, off), size: 4 };
+  if (memvar.type === kMemvarTypes.Array)
+    return readRawArray(L, B, off, memvar, def, memName);
+
+  // Raw, and any unrecognized memvar type, are fixed-size byte blobs.
+  var size = memvar.size || 4;
+  return {
+    value: new MetaTypeRaw(def.getName() + "::" + memName, size).read(L, B, off),
+    size: size
+  };
+}
+
+/**
+ * Read an Array member: a ref array, an inline class array, or — when the
+ * element type is unknown — the whole array as a raw blob.
+ * @returns {{value: LevelValue|LevelValue[], size: number}}
+ */
+function readRawArray(L, B, off, memvar, def, memName) {
+  var count = B.readUInt32LE(off)
+    , elemCursor = off + 4
+    , elemType = memvar.aux
+    , elements;
+
+  // Ref array: object-index pointers.
+  if (elemType === 0xFFFFFFFF) {
+    elements = [];
+    for (var i = 0; i < count; i++) {
+      elements.push(kMetaTypes.Pointer.read(L, B, elemCursor));
+      elemCursor += 4;
+    }
+    return { value: elements, size: 4 + count * 4 };
+  }
+
+  // Inline class array: each element is a sub-object of a known class.
+  if (elemType >= 0 && elemType < L.classes.length) {
+    elements = [];
+    var subRaw = L.classes[elemType]
+      , subDef = subRaw.def;
+    for (var j = 0; j < count; j++) {
+      var subObj, subSize;
+      if (subDef && subDef.isAutoCreated) {
+        var sub = readRawMembers(L, B, elemCursor, subRaw, subDef, "");
+        subObj = sub.obj;
+        subSize = sub.size;
+      } else {
+        subObj = subDef.read(L, B, elemCursor, subRaw);
+        subSize = subObj.getSize();
+      }
+      elements.push(subObj);
+      elemCursor += subSize;
+    }
+    return { value: elements, size: elemCursor - off };
+  }
+
+  // Unknown element type: capture the whole array as raw bytes.
+  var size = 4 + count * (memvar.size || 4);
+  return {
+    value: new MetaTypeRaw(def.getName() + "::" + memName, size).read(L, B, off),
+    size: size
+  };
 }
 
 module.exports = {

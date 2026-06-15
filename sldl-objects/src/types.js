@@ -1,8 +1,8 @@
-var { Buffer } = require("buffer");
-var { MetaTypeClass } = require("./type/metaTypeClass.js");
-var { MetaTypeBool, MetaTypeNumber } = require("./type/metaTypeNumber.js");
-var { MetaTypePointer } = require("./type/metaTypePointer.js");
-var { MetaTypeString } = require("./type/metaTypeString.js");
+const { Buffer } = require("buffer");
+const { MetaTypeClass } = require("./type/metaTypeClass.js");
+const { MetaTypeBool, MetaTypeNumber } = require("./type/metaTypeNumber.js");
+const { MetaTypePointer } = require("./type/metaTypePointer.js");
+const { MetaTypeString } = require("./type/metaTypeString.js");
 
 const kMetaTypes = {
   // Boolean.

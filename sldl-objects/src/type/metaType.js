@@ -1,4 +1,4 @@
-var kMetaValueType = Object.freeze({
+const kMetaValueType = Object.freeze({
   None: 0,
   Number: 1,
   String: 2,
@@ -8,7 +8,7 @@ var kMetaValueType = Object.freeze({
   Raw: 6,
 });
 
-var kMetaValueFlag = Object.freeze({
+const kMetaValueFlag = Object.freeze({
   None: 0,
   Array: 1,
   Clump: 2,
