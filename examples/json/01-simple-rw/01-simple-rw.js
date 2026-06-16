@@ -1,7 +1,16 @@
-var { DeclarationGroup, JsonLevelObjects } = require("sldl-jsonify");
-var { Buffer } = require("buffer");
-var fs = require("fs");
-var pl = require("path");
+/**
+ * Part of that-sky-project.
+ * Copyright (c) 2026 That Sky Project
+ * All rights reserved.
+ * 
+ * Examples: 01-simple-rw
+ *   Simple .level.bin read, write and declarations.
+ */
+
+const { DeclarationGroup, JsonLevelObjects } = require("sldl-jsonify");
+const { Buffer } = require("buffer");
+const fs = require("fs");
+const pl = require("path");
 
 // Read declarations.
 var decl = new DeclarationGroup(require("./decl.json")).parse();
