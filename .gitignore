@@ -8,6 +8,7 @@ ida/
 
 package-lock.json
 BstBaked.meshes
+CLAUDE.md
 *.level.bin
 *.level.json
 *.decl.json
