@@ -3,6 +3,7 @@
   "version": "1.2.3",
   "main": "main.js",
   "files": [
+    "dist",
     "src",
     "main.js",
     "main.d.ts",
@@ -11,7 +12,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "npx -w . webpack"
   },
   "dependencies": {
     "buffer": "^6.0.3",
@@ -29,5 +30,10 @@
   "bugs": {
     "url": "https://github.com/that-sky-project/that-sky-compiler/issues"
   },
-  "homepage": "https://github.com/that-sky-project/that-sky-compiler#readme"
+  "homepage": "https://github.com/that-sky-project/that-sky-compiler#readme",
+  "devDependencies": {
+    "terser-webpack-plugin": "^5.6.1",
+    "webpack": "^5.107.2",
+    "webpack-cli": "^7.0.3"
+  }
 }
