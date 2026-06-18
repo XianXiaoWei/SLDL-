@@ -5,19 +5,25 @@ const pkg = require('./package.json');
 
 module.exports = {
   mode: "production",
-  entry: "./main.js",
+  entry: {
+    "sldl-utils": "./main.js",
+    "sldl-utils.min": "./main.js",
+  },
   output: {
     clean: true,
-    filename: "sldl-utils.min.js",
+    filename: "[name].js",
     path: path.resolve(__dirname, "dist"),
-    libraryTarget: "umd",
-    library: "SLDL",
+    library: {
+      name: "SLDL",
+      type: "assign-properties"
+    },
     globalObject: "window"
   },
   optimization: {
     minimize: true,
     minimizer: [new TerserPlugin({
-      extractComments: false
+      extractComments: false,
+      include: /\.min\.js$/
     })]
   },
   plugins: [

@@ -1,22 +1,28 @@
 const TerserPlugin = require("terser-webpack-plugin");
 const webpack = require("webpack");
 const path = require("path");
-const pkg = require('./package.json');
+const pkg = require("./package.json");
 
 module.exports = {
   mode: "production",
-  entry: "./main.js",
+  entry: {
+    "sldl-jsonify": "./main.js",
+    "sldl-jsonify.min": "./main.js",
+  },
   output: {
-    filename: "sldl-jsonify.min.js",
+    filename: "[name].js",
     path: path.resolve(__dirname, "dist"),
-    libraryTarget: "umd",
-    library: "SLDL",
+    library: {
+      name: "SLDL",
+      type: "assign-properties"
+    },
     globalObject: "window"
   },
   optimization: {
     minimize: true,
     minimizer: [new TerserPlugin({
       extractComments: false,
+      include: /\.min\.js$/
     })]
   },
   externals: {
