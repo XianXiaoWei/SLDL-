@@ -85,7 +85,7 @@ export class MetaTypeForward extends MetaType {
 }
 
 /** Class member wrapping a scalar type (not an array). */
-export class MetaTypeClassMember extends MetaTypeForward {}
+export class MetaTypeClassMember extends MetaTypeForward { }
 
 /**
  * Class member wrapping an array type.
@@ -102,12 +102,11 @@ export class MetaTypeClassMemberArray extends MetaTypeClassMember {
  * Members can be MetaTypeClassMember or MetaTypeClassMemberArray.
  */
 export class MetaTypeClass extends MetaType {
-  /** Parent class in inheritance chain; null for Object. */
-  parent: MetaTypeClass | null;
-  /** This class's own members (not including inherited ones). */
-  members: Map<string, MetaTypeClassMember>;
+  /** Create a default LevelValue for a given member type. */
+  static memberTypeDefault(member: MetaTypeClassMember): LevelValue | LevelValue[];
 
   constructor(name: string, parent?: MetaTypeClass | null);
+
   /** Check if `def` appears anywhere in the inheritance chain. */
   isCompatible(def: MetaType): boolean;
   /**
@@ -128,8 +127,26 @@ export class MetaTypeClass extends MetaType {
   read(L: LoIndices, B: Buffer, off: number, raw?: LoClass): LevelValueClass | null | undefined;
   /** Write object member data to binary buffer. Returns bytes written. */
   write(L: LoIndices, B: Buffer, val: LevelValueClass, off: number, usedMembers?: Set<string>): number;
-  /** Create a default LevelValue for a given member type. */
-  static memberTypeDefault(member: MetaTypeClassMember): LevelValue | LevelValue[];
+
+  /** Parent class in inheritance chain; null for Object. */
+  parent: MetaTypeClass | null;
+  /** This class's own members (not including inherited ones). */
+  members: Map<string, MetaTypeClassMember>;
+}
+
+/** Internal Clump<T> type. */
+export class MetaTypeClump extends MetaTypeForward {
+  constructor(name: string, genericParam: MetaTypeClass);
+
+  isCompatible(def: MetaType): boolean;
+  addMember(def: MetaType, name: string, count?: number): boolean;
+  getMember(name: string): MetaTypeClassMember | undefined;
+  allMembers(usedMembers?: Set<string>): Array<[string, MetaTypeClassMember]>;
+  read(L: LoIndices, B: Buffer, off: number, raw?: LoClass): LevelValueClass | null | undefined;
+  write(L: LoIndices, B: Buffer, val: LevelValueClass, off: number, usedMembers?: Set<string>): number;
+
+  members: Map<string, MetaTypeClassMember>;
+  parent: MetaTypeClass | null;
 }
 
 /** 1-byte boolean type. */
@@ -222,10 +239,10 @@ export class LevelValueClass extends LevelValue {
 }
 
 /** Boolean value (1 byte). */
-export class LevelValueBool extends LevelValue {}
+export class LevelValueBool extends LevelValue { }
 
 /** Numeric value (integer or float, 1-8 bytes). */
-export class LevelValueNumber extends LevelValue {}
+export class LevelValueNumber extends LevelValue { }
 
 /**
  * Pointer value storing an object index or target name.
@@ -242,7 +259,7 @@ export class LevelValuePointer extends LevelValue {
 }
 
 /** String value (nul-terminated UTF-8). */
-export class LevelValueString extends LevelValue {}
+export class LevelValueString extends LevelValue { }
 
 /** Struct value holding named sub-values. */
 export class LevelValueStruct extends LevelValue {
@@ -251,7 +268,7 @@ export class LevelValueStruct extends LevelValue {
 }
 
 /** Raw bytes value (opaque Buffer). */
-export class LevelValueRaw extends LevelValue {}
+export class LevelValueRaw extends LevelValue { }
 
 // --- Binary I/O --------------------------------------------------------------
 
@@ -363,7 +380,7 @@ export class LevelObjects {
   /** Store an object, tracking member usage for pruning. */
   set(obj: LevelValueClass): void;
   /** Read a .level.bin Buffer, returning a Map of stored objects. */
-  readBinary(buffer: Buffer): Map<string, LevelValueClass>;
+  readBinary(buffer: Buffer | Uint8Array): Map<string, LevelValueClass>;
   /** Serialize stored objects to a .level.bin Buffer. */
-  writeBinary(usedMembers?: Map<string, Set<string>>): Buffer;
+  writeBinary(usedMembers?: Map<string, Set<string>>): Buffer | Uint8Array;
 }

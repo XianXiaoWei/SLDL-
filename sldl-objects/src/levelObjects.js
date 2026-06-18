@@ -13,21 +13,14 @@ const { LevelValueClass } = require("./value/levelValueClass.js");
 const { LevelValuePointer } = require("./value/levelValuePointer.js");
 
 // Install natively missing helpers on Buffer.
-if (typeof Buffer.prototype.readStringZero !== "function") {
-  Buffer.prototype.readStringZero = function (offset, encoding) {
+function readStringZero(B, offset, encoding) {
+  return (function (offset, encoding) {
     offset >>>= 0;
     if (offset >= this.length) return "";
     var begin = offset, end = begin;
     while (end < this.length && this[end]) end++;
     return begin < end ? this.toString(encoding, begin, end) : "";
-  };
-}
-if (typeof Buffer.prototype.writeStringZero !== "function") {
-  Buffer.prototype.writeStringZero = function (string, offset, encoding) {
-    var bytes = Buffer.from(string);
-    offset >>>= 0;
-    this.set(bytes, offset);
-  };
+  }).call(B, offset, encoding);
 }
 
 /** Member variable types in TGCL file. */
@@ -107,7 +100,7 @@ class LoHeader {
 /** String pool. */
 class LoStringPool {
   static read(B, offset) {
-    return B.readStringZero(offset);
+    return readStringZero(B, offset);
   }
 
   constructor() {
@@ -445,10 +438,12 @@ class LevelObjects {
   /**
    * Read a TGCL binary buffer. Objects are stored internally and
    * also returned.
-   * @param {Buffer} buffer
+   * @param {Buffer|Uint8Array} buffer
    * @returns {Map<string, LevelValueClass>}
    */
   readBinary(buffer) {
+    Buffer.isBuffer(buffer) || (buffer = Buffer.from(buffer));
+
     var header = new LoHeader().read(buffer);
     var L = this.indices;
 
@@ -503,7 +498,7 @@ class LevelObjects {
     var cursor = header.objectsOffset;
     for (var k = 0; k < header.numObjects && cursor < header.fileSize; k++) {
       var classIdx = buffer.readUInt32LE(cursor)
-        , name = buffer.readStringZero(cursor + 4);
+        , name = readStringZero(buffer, cursor + 4);
       if (classIdx >= L.classes.length || classIdx < 0)
         throw kObjectExceptions.InvalidClassIndex.from(classIdx);
 
@@ -553,7 +548,7 @@ class LevelObjects {
   /**
    * Serialize stored objects to a TGCL binary buffer.
    * @param {Set<string>} [usedMembers] - per-class member usage for pruning.
-   * @returns {Buffer}
+   * @returns {Uint8Array}
    */
   writeBinary(usedMembers) {
     var L = this.indices;
@@ -684,7 +679,7 @@ class LevelObjects {
     stringBuf.copy(result, stringsOffset);
     objBuf.copy(result, objectsOffset, 0, objCursor);
 
-    return result;
+    return new Uint8Array(result);
   }
 }
 

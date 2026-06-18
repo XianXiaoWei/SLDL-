@@ -5,8 +5,8 @@
  * LGPL-3.0-or-later
  */
 
-var { kObjectExceptions } = require("./src/exceptions.js");
-var {
+const { kObjectExceptions } = require("./src/exceptions.js");
+const {
   LoHeader,
   LoStringPool,
   LoMemvar,
@@ -15,26 +15,26 @@ var {
   LevelObjects,
   kMemvarTypes
 } = require("./src/levelObjects.js");
-var { kMetaTypes, getClumpGeneric, clumpGenericCache } = require("./src/types.js");
-var { MetaType, MetaTypeForward, kMetaValueType } = require("./src/type/metaType.js");
-var {
+const { kMetaTypes, getClumpGeneric, clumpGenericCache } = require("./src/types.js");
+const { MetaType, MetaTypeForward, kMetaValueType } = require("./src/type/metaType.js");
+const {
   MetaTypeClassMember,
   MetaTypeClassMemberArray,
   MetaTypeClass,
   MetaTypeClump
 } = require("./src/type/metaTypeClass.js");
-var { MetaTypeBool, MetaTypeNumber } = require("./src/type/metaTypeNumber.js");
-var { MetaTypePointer } = require("./src/type/metaTypePointer.js");
-var { MetaTypeString } = require("./src/type/metaTypeString.js");
-var { MetaTypeStructMember, MetaTypeStruct } = require("./src/type/metaTypeStruct.js");
-var { MetaTypeRaw } = require("./src/type/metaTypeRaw.js");
-var { LevelValue } = require("./src/value/levelValue.js");
-var { LevelValueClass } = require("./src/value/levelValueClass.js");
-var { LevelValueBool, LevelValueNumber } = require("./src/value/levelValueNumber.js");
-var { LevelValuePointer } = require("./src/value/levelValuePointer.js");
-var { LevelValueString } = require("./src/value/levelValueString.js");
-var { LevelValueStruct } = require("./src/value/levelValueStruct.js");
-var { LevelValueRaw } = require("./src/value/levelValueRaw.js");
+const { MetaTypeBool, MetaTypeNumber } = require("./src/type/metaTypeNumber.js");
+const { MetaTypePointer } = require("./src/type/metaTypePointer.js");
+const { MetaTypeString } = require("./src/type/metaTypeString.js");
+const { MetaTypeStructMember, MetaTypeStruct } = require("./src/type/metaTypeStruct.js");
+const { MetaTypeRaw } = require("./src/type/metaTypeRaw.js");
+const { LevelValue } = require("./src/value/levelValue.js");
+const { LevelValueClass } = require("./src/value/levelValueClass.js");
+const { LevelValueBool, LevelValueNumber } = require("./src/value/levelValueNumber.js");
+const { LevelValuePointer } = require("./src/value/levelValuePointer.js");
+const { LevelValueString } = require("./src/value/levelValueString.js");
+const { LevelValueStruct } = require("./src/value/levelValueStruct.js");
+const { LevelValueRaw } = require("./src/value/levelValueRaw.js");
 
 module.exports = {
   // ./src/exceptions.js
