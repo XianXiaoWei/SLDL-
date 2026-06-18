@@ -19,7 +19,7 @@
   "dependencies": {
     "@htmonkeyg/tformat": "^1.0.1",
     "arg": "^5.0.2",
-    "sldl-jsonify": "^1.0.0",
+    "sldl-jsonify": "^1.1.0",
     "sldl-objects": "^1.2.0"
   }
 }

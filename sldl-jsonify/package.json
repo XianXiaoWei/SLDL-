@@ -1,6 +1,6 @@
 {
   "name": "sldl-jsonify",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "JSON frontend for sldl-objects.",
   "main": "main.js",
   "types": "./main.d.ts",
