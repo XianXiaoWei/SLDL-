@@ -1,8 +1,21 @@
-var { kMetaTypes, getClumpGeneric, clumpGenericCache } = require("sldl-objects");
-var { MetaType, MetaTypeForward, kMetaValueType, MetaTypeClass,
-  MetaTypeClassMember, MetaTypeClassMemberArray, MetaTypeStruct,
-  MetaTypeRaw, MetaTypePointer, MetaTypeClump } = require("sldl-objects");
-var { kItaniumException } = require("./exception.js");
+const {
+  kMetaTypes,
+  getClumpGeneric,
+  clumpGenericCache
+} = require("sldl-objects");
+const {
+  MetaType,
+  MetaTypeForward,
+  kMetaValueType,
+  MetaTypeClass,
+  MetaTypeClassMember,
+  MetaTypeClassMemberArray,
+  MetaTypeStruct,
+  MetaTypeRaw,
+  MetaTypePointer,
+  MetaTypeClump
+} = require("sldl-objects");
+const { kJsonifyException } = require("./exception.js");
 
 /**
  * Parses a JSON declaration group into MetaType instances.
@@ -79,7 +92,7 @@ class DeclarationGroup {
     for (var name of Object.keys(aliases)) {
       var targetName = aliases[name];
       if (typeof targetName !== "string")
-        throw kItaniumException.InvalidAliasTarget.from(name, String(targetName));
+        throw kJsonifyException.InvalidAliasTarget.from(name, String(targetName));
       // Will be resolved in the resolve phase.
       // Store for later resolution.
       this.aliasMap = this.aliasMap || {};
@@ -90,23 +103,23 @@ class DeclarationGroup {
     for (var name of Object.keys(enums)) {
       var enumDef = enums[name];
       if (!enumDef || typeof enumDef !== "object")
-        throw kItaniumException.InvalidEnumBaseType.from(name, String(enumDef));
+        throw kJsonifyException.InvalidEnumBaseType.from(name, String(enumDef));
 
       var baseTypeName = enumDef.$as;
       if (typeof baseTypeName !== "string")
-        throw kItaniumException.InvalidEnumBaseType.from(name, String(baseTypeName));
+        throw kJsonifyException.InvalidEnumBaseType.from(name, String(baseTypeName));
 
       // Underlying type must be a signed integer.
       var signedInts = ["int8_t", "int16_t", "int32_t", "int64_t"];
       if (signedInts.indexOf(baseTypeName) === -1)
-        throw kItaniumException.InvalidEnumBaseType.from(name, baseTypeName);
+        throw kJsonifyException.InvalidEnumBaseType.from(name, baseTypeName);
 
       for (var constKey of Object.keys(enumDef)) {
         if (constKey.startsWith("$"))
           continue;
         var constVal = enumDef[constKey];
         if (this.enumInfo.has(constKey))
-          throw kItaniumException.DuplicateEnumConstant.from(constKey);
+          throw kJsonifyException.DuplicateEnumConstant.from(constKey);
 
         // Parse value - allow number or numeric string.
         var parsed;
@@ -138,7 +151,7 @@ class DeclarationGroup {
       var align = structRaw.$align;
       if (align !== void 0) {
         if (typeof align !== "number" || align <= 0 || (align & (align - 1)))
-          throw kItaniumException.InvalidValueFormat.from(align, "$align for struct " + name);
+          throw kJsonifyException.InvalidValueFormat.from(align, "$align for struct " + name);
       }
 
       for (var memberKey of Object.keys(structRaw)) {
@@ -147,7 +160,7 @@ class DeclarationGroup {
 
         var memberTypeExpr = structRaw[memberKey];
         if (typeof memberTypeExpr !== "string")
-          throw kItaniumException.InvalidMemberSyntax.from(String(memberTypeExpr));
+          throw kJsonifyException.InvalidMemberSyntax.from(String(memberTypeExpr));
 
         var result = this.parseStructMemberType(memberTypeExpr, name, memberKey);
         structDef.addMember(result.type, memberKey, result.count);
@@ -171,7 +184,7 @@ class DeclarationGroup {
       } else if (typeof parentName === "string") {
         var parentDef = this.resolveType(parentName);
         if (!parentDef || !(parentDef instanceof MetaTypeClass))
-          throw kItaniumException.UnresolvedTypeName.from(parentName);
+          throw kJsonifyException.UnresolvedTypeName.from(parentName);
         classDef.parent = parentDef;
       }
 
@@ -185,7 +198,7 @@ class DeclarationGroup {
 
         var memberTypeExpr = classRaw[memberKey];
         if (typeof memberTypeExpr !== "string")
-          throw kItaniumException.InvalidMemberSyntax.from(String(memberTypeExpr));
+          throw kJsonifyException.InvalidMemberSyntax.from(String(memberTypeExpr));
 
         var memberResult = this.parseClassMemberType(memberTypeExpr, name, memberKey);
         classDef.addMember(memberResult.type, memberKey, memberResult.count);
@@ -198,11 +211,11 @@ class DeclarationGroup {
         var targetName = this.aliasMap[name];
         var target = this.resolveType(targetName);
         if (!target)
-          throw kItaniumException.UnresolvedTypeName.from(targetName);
+          throw kJsonifyException.UnresolvedTypeName.from(targetName);
 
         var vt = target.valueType();
         if (vt !== kMetaValueType.Number && vt !== kMetaValueType.Struct)
-          throw kItaniumException.InvalidAliasTarget.from(name, targetName);
+          throw kJsonifyException.InvalidAliasTarget.from(name, targetName);
 
         this.types.set(name, new MetaTypeForward(target, name));
       }
@@ -217,7 +230,7 @@ class DeclarationGroup {
       var typeParam = key.slice(6, -1); // remove "Clump<" and ">"
       var resolvedT = this.resolveType(typeParam);
       if (!resolvedT || !(resolvedT instanceof MetaTypeClass))
-        throw kItaniumException.UnresolvedTypeName.from(typeParam);
+        throw kJsonifyException.UnresolvedTypeName.from(typeParam);
 
       clumpClass.addMember(new MetaTypePointer("pointer", kMetaTypes.Object), "data", 0);
       this.classes.set(key, clumpClass);
@@ -276,7 +289,7 @@ class DeclarationGroup {
     var visited = new Set();
     for (var p = classDef.parent; p; p = p.parent) {
       if (p.getName() === name)
-        throw kItaniumException.CircularInheritance.from(name);
+        throw kJsonifyException.CircularInheritance.from(name);
       if (visited.has(p.getName()))
         break; // Already checked.
       visited.add(p.getName());
@@ -285,7 +298,7 @@ class DeclarationGroup {
 
   checkDuplicate(allNames, name) {
     if (allNames.has(name))
-      throw kItaniumException.DuplicateTypeName.from(name);
+      throw kJsonifyException.DuplicateTypeName.from(name);
     allNames.add(name);
   }
 
@@ -302,20 +315,20 @@ class DeclarationGroup {
       var count = parseInt(arrayMatch[2], 10) || 1;
       var baseType = this.resolveType(typeName);
       if (!baseType)
-        throw kItaniumException.UnresolvedTypeName.from(typeName);
+        throw kJsonifyException.UnresolvedTypeName.from(typeName);
       if (baseType.valueType() !== kMetaValueType.Number
         && baseType.valueType() !== kMetaValueType.Struct)
-        throw kItaniumException.InvalidMemberSyntax.from(expr);
+        throw kJsonifyException.InvalidMemberSyntax.from(expr);
       return { type: baseType, count: count };
     }
 
     // Plain type name.
     var baseType = this.resolveType(expr.trim());
     if (!baseType)
-      throw kItaniumException.UnresolvedTypeName.from(expr);
+      throw kJsonifyException.UnresolvedTypeName.from(expr);
     if (baseType.valueType() !== kMetaValueType.Number
       && baseType.valueType() !== kMetaValueType.Struct)
-      throw kItaniumException.InvalidMemberSyntax.from(expr);
+      throw kJsonifyException.InvalidMemberSyntax.from(expr);
     return { type: baseType, count: void 0 };
   }
 
@@ -370,13 +383,13 @@ class DeclarationGroup {
     }
 
     if (!resolvedType)
-      throw kItaniumException.UnresolvedTypeName.from(typeName);
+      throw kJsonifyException.UnresolvedTypeName.from(typeName);
 
     if (hasPointer) {
       // Reference types — accept MetaTypeClass and MetaTypeClump.
       if (!(resolvedType instanceof MetaTypeClass)
         && !(resolvedType instanceof MetaTypeClump))
-        throw kItaniumException.InvalidMemberSyntax.from(expr);
+        throw kJsonifyException.InvalidMemberSyntax.from(expr);
 
       var ptrType = new MetaTypePointer(
         resolvedType.getName() + " *", resolvedType);
@@ -399,7 +412,7 @@ class DeclarationGroup {
           count: void 0
         };
       }
-      throw kItaniumException.InvalidMemberSyntax.from(expr);
+      throw kJsonifyException.InvalidMemberSyntax.from(expr);
     }
 
     // Inline struct, number, or string.

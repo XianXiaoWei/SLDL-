@@ -5,18 +5,18 @@
  * LGPL-3.0-or-later
  */
 
-var {
+const {
   MetaTypeClass,
+  MetaTypeClump,
   MetaTypeClassMemberArray,
   LevelObjects,
   LevelValueClass,
   kMetaTypes,
   kMetaValueType
 } = require("sldl-objects");
-var { ItaniumResolver, kItaniumTypes } = require("./src/itanium.js");
-var { DeclarationGroup } = require("./src/declGroup.js");
-var jsonValue = require("./src/jsonValue.js");
-var { kItaniumException } = require("./src/exception.js");
+const { DeclarationGroup } = require("./src/declGroup.js");
+const jsonValue = require("./src/jsonValue.js");
+const { kJsonifyException } = require("./src/exception.js");
 
 /**
  * High-level JSON-based reader/writer that wraps sldl-objects'
@@ -25,33 +25,20 @@ var { kItaniumException } = require("./src/exception.js");
 class JsonLevelObjects {
   /**
    * @param {Object|DeclarationGroup|string} declGroup - JSON declaration
-   *   group, a pre-parsed DeclarationGroup instance, or an itanium string.
-   * @param {boolean} [isItanium] - if true, declGroup is an itanium string.
+   *   group or a pre-parsed DeclarationGroup instance.
    */
-  constructor(declGroup, isItanium) {
+  constructor(declGroup) {
     var defs;
 
-    if (isItanium) {
-      var resolved = ItaniumResolver.resolve(declGroup);
-      if (!resolved)
-        throw kItaniumException.Unexpected.from("unresolved types", 0);
-      defs = resolved;
-      this.declGroup = null;
-      this.isItanium = true;
-    } else {
-      // Use a private copy of a pre-parsed group, or parse a raw JSON group.
-      var dg = declGroup instanceof DeclarationGroup
-        ? cloneDeclGroup(declGroup)
-        : new DeclarationGroup(declGroup).parse();
-      defs = buildDefs(dg);
-      this.declGroup = dg;
-      this.isItanium = false;
-    }
+    // Use a private copy of a pre-parsed group, or parse a raw JSON group.
+    var dg = declGroup instanceof DeclarationGroup
+      ? cloneDeclGroup(declGroup)
+      : new DeclarationGroup(declGroup).parse();
+    defs = buildDefs(dg);
+    this.declGroup = dg;
 
     /** @type {LevelObjects} */
     this.lo = new LevelObjects(defs);
-    /** @type {string|null} Original itanium string, stored for getDeclGroup. */
-    this.itaniumSource = isItanium ? declGroup : null;
   }
 
   /**
@@ -91,11 +78,11 @@ class JsonLevelObjects {
 
       var className = objData.$type;
       if (typeof className !== "string")
-        throw kItaniumException.UnrecognizedType.from(String(className));
+        throw kJsonifyException.UnrecognizedType.from(String(className));
 
       var classDef = this.lo.indices.metaClasses.get(className);
       if (!classDef)
-        throw kItaniumException.UnrecognizedType.from(className);
+        throw kJsonifyException.UnrecognizedType.from(className);
 
       var lvc = new LevelValueClass(classDef, objName);
 
@@ -277,10 +264,6 @@ function isBuiltin(name) {
 }
 
 module.exports = {
-  // ./src/itanium.js
-  ItaniumResolver,
-  kItaniumTypes,
-
   // ./src/declGroup.js
   DeclarationGroup,
 
@@ -288,7 +271,7 @@ module.exports = {
   jsonValue,
 
   // ./src/exception.js
-  kItaniumException,
+  kJsonifyException,
 
   // High-level facade
   JsonLevelObjects,

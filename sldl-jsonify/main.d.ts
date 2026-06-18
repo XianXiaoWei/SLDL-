@@ -1,12 +1,10 @@
 // Type declarations for sldl-jsonify.
 
-/// <reference types="node" />
-
 import type { MetaType, MetaTypeClass, LevelValue } from "sldl-objects";
 
 // --- Exceptions --------------------------------------------------------------
 
-export const kItaniumException: {
+export const kJsonifyException: {
   Unexpected: ExceptionBuilder;
   Duplicated: ExceptionBuilder;
   InvalidAlign: ExceptionBuilder;
@@ -28,32 +26,6 @@ interface ExceptionBuilder {
   message?: string;
   builder?: (...args: any[]) => string;
   from(...args: any[]): Error;
-}
-
-// --- Itanium -----------------------------------------------------------------
-
-export const kItaniumTypes: Record<string, MetaType>;
-
-export class ItaniumResolver {
-  /** Parsed type definitions indexed by name. */
-  names: Map<string, MetaType>;
-
-  /**
-   * Parse an itanium string and return all class/struct MetaType definitions.
-   * Returns undefined if there are unresolved forward references.
-   */
-  static resolve(s: string): MetaType[] | undefined;
-
-  constructor(s: string);
-
-  /** Parse the itanium string. */
-  resolve(): void;
-
-  /**
-   * Parse and produce a JSON-compatible declaration group object
-   * with C$/S$/A$ keys. Returns undefined if unresolved references remain.
-   */
-  resolveToDeclGroup(): Record<string, any> | undefined;
 }
 
 // --- Declaration Group -------------------------------------------------------
@@ -130,9 +102,7 @@ export namespace jsonValue {
 
 export class JsonLevelObjects {
   /**
-   * @param declGroup - JSON declaration group object, a pre-parsed
-   *   DeclarationGroup instance, or an itanium string if isItanium is true.
-   * @param isItanium - treat declGroup as an itanium mangled string.
+   * @param declGroup - JSON declaration group object, or a pre-parsed DeclarationGroup instance.
    */
   constructor(
     declGroup: Record<string, any> | DeclarationGroup | string,
@@ -143,12 +113,12 @@ export class JsonLevelObjects {
    * Read a TGCL binary buffer. Unknown types are auto-added to the
    * stored declaration group. Returns JSON objects with "O$name" keys.
    */
-  read(buffer: Buffer): Record<string, any>;
+  read(buffer: Buffer | Uint8Array): Record<string, any>;
 
   /**
    * Write JSON objects (with "O$name" keys) to a TGCL binary buffer.
    */
-  write(objects: Record<string, any>): Buffer;
+  write(objects: Record<string, any>): Uint8Array;
 
   /**
    * Get the current declaration group.

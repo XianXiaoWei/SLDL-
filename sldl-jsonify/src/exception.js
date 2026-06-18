@@ -1,18 +1,6 @@
-var { DynamicExceptionBuilder, SimpleExceptionBuilder } = require("sldl-utils");
+const { DynamicExceptionBuilder, SimpleExceptionBuilder } = require("sldl-utils");
 
-var kItaniumException = Object.freeze({
-  // Itanium parser errors.
-  Unexpected: new DynamicExceptionBuilder(
-    (char, pos) => "unexpected char '" + char + "' at " + pos),
-  Duplicated: new DynamicExceptionBuilder(
-    name => "duplicated declaration \"" + name + "\""),
-  InvalidAlign: new DynamicExceptionBuilder(
-    align => "invalid alignment 0x" + align.toString(16)),
-  InvalidPointer: new DynamicExceptionBuilder(
-    type => "pointer of type \"" + type + "\" is invalid"),
-  UnrecognizedType: new DynamicExceptionBuilder(
-    clazz => "unrecognized type \"" + clazz + "\""),
-
+const kJsonifyException = Object.freeze({
   // Declaration group errors.
   DuplicateTypeName: new DynamicExceptionBuilder(
     name => "duplicate type name \"" + name + "\""),
@@ -30,6 +18,8 @@ var kItaniumException = Object.freeze({
     (name, type) => "enum \"" + name + "\" has invalid base type \"" + type + "\""),
 
   // Value parsing errors.
+  UnrecognizedType: new DynamicExceptionBuilder(
+    clazz => "unrecognized type \"" + clazz + "\""),
   UnresolvedEnumConstant: new DynamicExceptionBuilder(
     name => "unresolved enum constant \"" + name + "\""),
   UnresolvedObjectReference: new DynamicExceptionBuilder(
@@ -39,5 +29,5 @@ var kItaniumException = Object.freeze({
 });
 
 module.exports = {
-  kItaniumException
+  kJsonifyException
 };

@@ -1,14 +1,25 @@
-var { Buffer } = require("buffer");
-var { LevelValueString, LevelValueNumber, LevelValueBool, LevelValuePointer,
-  LevelValueRaw, LevelValueStruct, LevelValueClass } = require("sldl-objects");
-var { kMetaValueType, MetaTypeClassMember, MetaTypeClassMemberArray } = require("sldl-objects");
-var { kItaniumException } = require("./exception.js");
+const { Buffer } = require("buffer");
+const {
+  LevelValueString,
+  LevelValueNumber,
+  LevelValueBool,
+  LevelValuePointer,
+  LevelValueRaw,
+  LevelValueStruct,
+  LevelValueClass
+} = require("sldl-objects");
+const {
+  kMetaValueType,
+  MetaTypeClassMember,
+  MetaTypeClassMemberArray
+} = require("sldl-objects");
+const { kJsonifyException } = require("./exception.js");
 
 /**
  * Convert a JSON value to a LevelValue based on the member definition.
  * @param {any} jsonValue
  * @param {MetaTypeClassMember} member
- * @param {import("./declGroup.js").DeclarationGroup} declGroup
+ * @param {DeclarationGroup} declGroup
  * @returns {LevelValue|LevelValue[]}
  */
 function parse(jsonValue, member, declGroup) {
@@ -39,7 +50,7 @@ function parse(jsonValue, member, declGroup) {
       ptr.setIndex(jsonValue >>> 0);
       ptr.targetName = null;
     } else {
-      throw kItaniumException.InvalidValueFormat.from(String(jsonValue),
+      throw kJsonifyException.InvalidValueFormat.from(String(jsonValue),
         member.def.getName());
     }
 
@@ -51,7 +62,7 @@ function parse(jsonValue, member, declGroup) {
     var s = new LevelValueString(member.def);
     s.setValue(typeof jsonValue === "string" ? jsonValue
       : jsonValue === null || jsonValue === void 0 ? ""
-      : String(jsonValue));
+        : String(jsonValue));
     return s;
   }
 
@@ -79,7 +90,7 @@ function parse(jsonValue, member, declGroup) {
   if (member.valueType() === kMetaValueType.Class)
     return parseClass(jsonValue, member.def, declGroup);
 
-  throw kItaniumException.InvalidValueFormat.from(String(jsonValue),
+  throw kJsonifyException.InvalidValueFormat.from(String(jsonValue),
     member.def.getName());
 }
 
@@ -113,7 +124,7 @@ function parseNumber(jsonValue, def, declGroup) {
     else if (s.startsWith("K$")) {
       var constName = s.slice(2);
       if (!declGroup.enumConstants.has(constName))
-        throw kItaniumException.UnresolvedEnumConstant.from(constName);
+        throw kJsonifyException.UnresolvedEnumConstant.from(constName);
       num = declGroup.enumConstants.get(constName);
     }
     // Plain numeric string.

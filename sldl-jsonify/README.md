@@ -38,22 +38,6 @@ console.log(objects["O$SomeObject"].enabled);
 fs.writeFileSync("output.bin", jlo.write(objects));
 ```
 
-### Itanium Type Declarations
-
-```js
-var { JsonLevelObjects, ItaniumResolver } = require("sldl-jsonify");
-
-// Parse Itanium mangled type strings.
-var resolver = new ItaniumResolver("C5ClumpT4dataA_P6ObjectEE");
-var types = resolver.resolve();
-
-// Or get declaration group JSON from itanium.
-var declGroup = resolver.resolveToDeclGroup();
-// -> { "C$Clump": { "data": "Object *[]" } }
-
-var jlo = new JsonLevelObjects(itaniumString, true);
-```
-
 ## Declaration Group Format
 
 Declaration groups use prefixed keys to define types:
@@ -97,43 +81,12 @@ R$<N>                         raw binary of N bytes
 }
 ```
 
-## Itanium Format
-
-Itanium ABI name-mangled type strings. See the table below for the encoding:
-
-| Char | Meaning |
-|------|---------|
-| `C` | Class declaration start |
-| `U` | Struct declaration start |
-| `D` | Type alias |
-| `T` | Member list start |
-| `E` | End of declaration / member list |
-| `F` | Class parent name follows |
-| `L` | Struct alignment follows |
-| `A` | Array type prefix (optional count follows) |
-| `P` | Pointer type |
-| `b` | bool |
-| `c` | int8_t |
-| `h` | uint8_t |
-| `s` | int16_t |
-| `t` | uint16_t |
-| `i` | int32_t |
-| `j` | uint32_t |
-| `x` | int64_t |
-| `y` | uint64_t |
-| `f` | float |
-| `d` | double |
-| `g` | TgcString |
-
-Example: `C5ActorT2hpbF5EnemyE` - class `Actor` with members `hp` (int32) and parent `Enemy`.
-
 ## API Reference
 
 ### JsonLevelObjects
 
 ```js
 new JsonLevelObjects(declGroup)          // from JSON declaration group
-new JsonLevelObjects(itaniumStr, true)   // from itanium string
 jlo.read(buffer)                         // -> { objects, declGroup }
 jlo.write(objects)                       // -> Buffer
 ```
@@ -147,16 +100,6 @@ dg.types                                 // Map<string, MetaType>
 dg.classes                               // Map<string, MetaTypeClass>
 dg.enumConstants                         // Map<string, value>
 dg.resolveType(name)                     // -> MetaType | undefined
-```
-
-### ItaniumResolver
-
-```js
-ItaniumResolver.resolve(itaniumString)   // static: -> MetaType[]
-var r = new ItaniumResolver(str)
-r.resolve()                              // parse
-r.resolveToDeclGroup()                   // -> JSON decl group object
-r.names                                  // Map<string, MetaType>
 ```
 
 ### JSON Value Helpers
