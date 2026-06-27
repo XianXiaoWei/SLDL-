@@ -4,7 +4,7 @@
 
 ## python移植：县小威
 
-## 支持termux
+## 支持termux-光遇类支持0.33.7版本
 
 A Python port of [that-sky-compiler](https://github.com/that-sky-project/that-sky-compiler) — a compiler for **Sky Level Description Language (SLDL)** that reads and writes TGCL `.level.bin` binary files used by *Sky: Children of the Light*.
 
